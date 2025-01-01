@@ -31,6 +31,7 @@ public static class CommonPrefab
         btn.ButtonText = go.GetComponent<TextMeshProUGUI>("ButtonText");
         btn.Group = go.AddComponent<CanvasGroup>();
         btn.ButtonObject = go.GetComponent<Button>("ButtonObject");
+        btn.ButtonObject.onClick = new Button.ButtonClickedEvent();
 
         UIManager.RegisterPrefab(UidActionButton, btn);
     }

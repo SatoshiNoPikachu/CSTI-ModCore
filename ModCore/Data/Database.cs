@@ -110,6 +110,29 @@ public static class Database
         AllData[type] = dict;
     }
 
+    /// <summary>
+    /// 添加数据对象
+    /// </summary>
+    /// <param name="key">数据键</param>
+    /// <param name="obj">数据对象</param>
+    /// <typeparam name="T">数据类型</typeparam>
+    public static void AddObject<T>(string key, T obj)
+    {
+        var type = typeof(T);
+        var dict = GetData<T>();
+        if (dict is null)
+        {
+            dict = new Dictionary<string, T>
+            {
+                [key] = obj
+            };
+            AllData[type] = dict;
+            return;
+        }
+
+        if (dict.ContainsKey(key)) dict.Add(key, obj);
+    }
+
     // /// <summary>
     // /// 清空数据
     // /// </summary>

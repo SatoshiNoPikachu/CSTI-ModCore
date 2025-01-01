@@ -37,6 +37,11 @@ public static class Loader
     private static HashSet<DataInfo> _dataInfos = [];
 
     /// <summary>
+    /// 预加载数据
+    /// </summary>
+    private static List<(object, JsonData)> _preloadData = [];
+
+    /// <summary>
     /// 字段信息缓存
     /// </summary>
     private static Dictionary<Type, Dictionary<string, FieldInfo>> _cacheFields = [];
@@ -81,7 +86,7 @@ public static class Loader
 
         var modDirs = new DirectoryInfo(BepInEx.Paths.PluginPath).GetDirectories();
 
-        Database.AddData(LoadAllTexture2D(modDirs, "Resource/Texture2D"));
+        LoadAllTexture2D(modDirs, "Resource/Texture2D");
 
         var warpData = new List<(object, JsonData)>();
         foreach (var info in _dataInfos)
@@ -93,6 +98,11 @@ public static class Loader
             warpData.AddRange(data);
         }
 
+        foreach (var (obj, jsonData) in _preloadData)
+        {
+            FixData(obj, jsonData);
+        }
+
         foreach (var (obj, jsonData) in warpData)
         {
             FixData(obj, jsonData);
@@ -100,6 +110,7 @@ public static class Loader
 
         LoadCompleteEvent?.Invoke();
         _dataInfos = null;
+        _preloadData = null;
         _cacheFields = [];
         IsLoaded = true;
     }
@@ -119,7 +130,7 @@ public static class Loader
                 var objs = Resources.FindObjectsOfTypeAll(type);
                 if (objs?.Length > 0)
                 {
-                    var dict = MakeDataDict(type);
+                    var dict = Database.GetData(type) ?? MakeDataDict(type);
                     foreach (var obj in objs)
                     {
                         var so = (ScriptableObject)obj;
@@ -140,7 +151,6 @@ public static class Loader
             if (type.IsAbstract) continue;
             if (!type.IsSerializable && !isSo) continue;
 
-
             var attr = type.GetCustomAttribute<DataInfoAttribute>();
             if (attr is null) continue;
 
@@ -154,9 +164,20 @@ public static class Loader
     /// <param name="dirs">目录信息</param>
     /// <param name="texPath">纹理路径</param>
     /// <returns>精灵字典</returns>
-    public static Dictionary<string, Sprite> LoadAllTexture2D(IEnumerable<DirectoryInfo> dirs, string texPath)
+    private static void LoadAllTexture2D(IEnumerable<DirectoryInfo> dirs, string texPath)
     {
-        var sprites = new Dictionary<string, Sprite>();
+        var sprites = Database.GetData<Sprite>();
+        if (sprites is null)
+        {
+            sprites = new Dictionary<string, Sprite>();
+            Database.AddData(sprites);
+        }
+
+        foreach (var sprite in Resources.FindObjectsOfTypeAll<Sprite>())
+        {
+            if (sprites.ContainsKey(sprite.name)) continue;
+            sprites.Add(sprite.name, sprite);
+        }
 
         foreach (var dir in dirs)
         {
@@ -192,8 +213,6 @@ public static class Loader
                 sprites.Add(name, sprite);
             }
         }
-
-        return sprites;
     }
 
     /// <summary>
@@ -276,6 +295,41 @@ public static class Loader
         Database.AddData(type, dict);
 
         return list;
+    }
+
+    /// <summary>
+    /// 预加载数据，仅供非UnityEngine.Object类型提供相同名称检查
+    /// </summary>
+    /// <param name="name">对象名称</param>
+    /// <param name="json">JSON字符串</param>
+    /// <typeparam name="T">数据类型</typeparam>
+    public static void PreloadData<T>(string name, string json)
+    {
+        if (IsLoaded) return;
+
+        var type = typeof(T);
+        if (Database.GetData(type)?.Contains(name) is true) return;
+
+        var obj = (T)(type.IsSubclassOf(typeof(ScriptableObject))
+            ? ScriptableObject.CreateInstance(type)
+            : Activator.CreateInstance(type));
+        JsonUtility.FromJsonOverwrite(json, obj);
+
+        if (obj is Object unityObj)
+        {
+            unityObj.name = name;
+        }
+        else
+        {
+            Database.AddObject(name, obj);
+        }
+
+        if (obj is UniqueIDScriptable uidObj)
+        {
+            GameLoad.Instance.DataBase.AllData.Add(uidObj);
+        }
+
+        _preloadData.Add((obj, JsonMapper.ToObject(json)));
     }
 
     /// <summary>
@@ -559,10 +613,10 @@ public static class Loader
     }
 
     /// <summary>
-    /// Json反序列化
+    /// JSON反序列化
     /// </summary>
     /// <param name="type">类型</param>
-    /// <param name="jsonData">Json数据</param>
+    /// <param name="jsonData">JSON数据</param>
     /// <returns>对象</returns>
     private static object FromJson(Type type, JsonData jsonData)
     {
@@ -570,6 +624,34 @@ public static class Loader
         JsonUtility.FromJsonOverwrite(jsonData.ToJson(), obj);
         FixData(obj, jsonData);
         return obj;
+    }
+
+    /// <summary>
+    /// JSON反序列化
+    /// </summary>
+    /// <param name="json">JSON字符串</param>
+    /// <typeparam name="T">类型</typeparam>
+    /// <returns>对象</returns>
+    public static T FromJson<T>(string json)
+    {
+        var type = typeof(T);
+        var obj = type.IsSubclassOf(typeof(ScriptableObject))
+            ? ScriptableObject.CreateInstance(type)
+            : Activator.CreateInstance(type);
+        JsonUtility.FromJsonOverwrite(json, obj);
+        FixData(obj, JsonMapper.ToObject(json));
+        return (T)obj;
+    }
+
+    /// <summary>
+    /// JSON反序列化覆写对象
+    /// </summary>
+    /// <param name="json">JSON字符串</param>
+    /// <param name="obj">对象</param>
+    public static void FromJsonOverwrite(string json, object obj)
+    {
+        JsonUtility.FromJsonOverwrite(json, obj);
+        FixData(obj, JsonMapper.ToObject(json));
     }
 
     /// <summary>

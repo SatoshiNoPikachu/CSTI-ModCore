@@ -5,12 +5,24 @@ using System.Text.RegularExpressions;
 
 namespace ModCore.Services;
 
+/// <summary>
+/// 本地化服务
+/// </summary>
 public static class LocalizationService
 {
+    /// <summary>
+    /// 当前语言
+    /// </summary>
     public static string CurrentLanguage { get; private set; }
 
+    /// <summary>
+    /// 本地化目录路径
+    /// </summary>
     private static readonly List<(string, string)> Paths = [];
 
+    /// <summary>
+    /// 加载语言
+    /// </summary>
     internal static void LoadLanguage()
     {
         var manager = LocalizationManager.Instance;
@@ -43,12 +55,22 @@ public static class LocalizationService
         }
     }
 
+    /// <summary>
+    /// 注册本地化目录路径
+    /// </summary>
+    /// <param name="path">路径</param>
+    /// <param name="keyPrefix">本地化键前缀</param>
     public static void RegisterPath(string path, string keyPrefix = "")
     {
         if (!Directory.Exists(path)) return;
         Paths.Add((path, keyPrefix ?? ""));
     }
 
+    /// <summary>
+    /// 解析本地化CSV文本
+    /// </summary>
+    /// <param name="text">CSV文本</param>
+    /// <returns>本地化字典</returns>
     private static Dictionary<string, List<string>> Parse(string text)
     {
         try
