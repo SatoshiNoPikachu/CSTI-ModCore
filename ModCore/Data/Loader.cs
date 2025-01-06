@@ -101,6 +101,19 @@ public static class Loader
         foreach (var (obj, jsonData) in _preloadData)
         {
             FixData(obj, jsonData);
+
+            if (obj is not UniqueIDScriptable uidObj) continue;
+
+            if (UniqueIDScriptable.AllUniqueObjects.ContainsKey(uidObj.UniqueID))
+            {
+                Plugin.Log.LogWarning($"Preload not register same uid {uidObj.UniqueID}.");
+            }
+            else
+            {
+                uidObj.Init();
+            }
+
+            GameLoad.Instance.DataBase.AllData.Add(uidObj);
         }
 
         foreach (var (obj, jsonData) in warpData)
@@ -322,11 +335,6 @@ public static class Loader
         else
         {
             Database.AddObject(name, obj);
-        }
-
-        if (obj is UniqueIDScriptable uidObj)
-        {
-            GameLoad.Instance.DataBase.AllData.Add(uidObj);
         }
 
         _preloadData.Add((obj, JsonMapper.ToObject(json)));

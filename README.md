@@ -8,7 +8,7 @@
 
 
 
-当前版本：1.1.0
+当前版本：1.1.1
 
 By.サトシの皮卡丘
 
@@ -21,6 +21,12 @@ By.サトシの皮卡丘
 
 
 ## 更新日志
+
+### Version 1.1.1
+
+通过Loader.Preload方法加载的UniqueIDScriptable类型对象注册将延迟至FixData阶段，以解决在部分情况下GameLoad还未被实例化的问题。
+
+
 
 ### Version 1.1.0
 
