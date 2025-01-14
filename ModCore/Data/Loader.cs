@@ -452,11 +452,13 @@ public static class Loader
 
                     if (IsSkipFixElementType(elementType)) return;
 
-                    if (IsGameType(type))
+                    if (IsGameType(elementType))
                     {
                         for (var i = 0; i < jsonData.Count; i++)
                         {
-                            FixData(arr.GetValue(i), jsonData[i]);
+                            var element = arr.GetValue(i);
+                            FixData(element, jsonData[i]);
+                            if (elementType.IsValueType) arr.SetValue(element, i);
                         }
 
                         return;
@@ -484,11 +486,13 @@ public static class Loader
 
                     if (IsSkipFixElementType(elementType)) return;
 
-                    if (IsGameType(type))
+                    if (IsGameType(elementType))
                     {
                         for (var i = 0; i < jsonData.Count; i++)
                         {
+                            var element = list[i];
                             FixData(list[i], jsonData[i]);
+                            if (elementType.IsValueType) list[i] = element;
                         }
 
                         return;
