@@ -8,7 +8,7 @@
 
 
 
-当前版本：1.1.3
+当前版本：1.2.0
 
 By.サトシの皮卡丘
 
@@ -21,6 +21,14 @@ By.サトシの皮卡丘
 
 
 ## 更新日志
+
+### Version 1.2.0
+
+1. 加载器现在支持来自ModEditor的GameSourceModify的数据格式。
+2. 新增类DataMap，提供了通过CardTag/CardTypes类型实例获取所对应的CardData的扩展方法。
+3. 加载器现在支持递归加载子文件夹中的数据以及纹理。
+
+
 
 ### Version 1.1.3
 

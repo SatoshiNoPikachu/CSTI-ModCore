@@ -121,6 +121,8 @@ public static class Loader
             FixData(obj, jsonData);
         }
 
+        DataMap.Mapping();
+
         LoadCompleteEvent?.Invoke();
         _dataInfos = null;
         _preloadData = null;
@@ -197,7 +199,7 @@ public static class Loader
             var path = Path.Combine(dir.FullName, texPath);
             if (!Directory.Exists(path)) continue;
 
-            var files = new DirectoryInfo(path).GetFiles();
+            var files = new DirectoryInfo(path).EnumerateFileSystemInfos("*", SearchOption.AllDirectories);
             foreach (var file in files)
             {
                 if (file.Extension.ToLower() is not (".png" or ".jpg" or ".jpeg")) continue;
@@ -254,7 +256,7 @@ public static class Loader
                 : Path.Combine(modDir.FullName, "ScriptableObject", dataName);
             if (!Directory.Exists(path)) continue;
 
-            var files = new DirectoryInfo(path).GetFiles("*.json");
+            var files = new DirectoryInfo(path).GetFiles("*.json", SearchOption.AllDirectories);
             foreach (var file in files)
             {
                 var name = Path.GetFileNameWithoutExtension(file.Name);
@@ -756,5 +758,259 @@ public static class Loader
         if (type.IsEnum) return true;
 
         return type == typeof(string) || !type.IsSerializable;
+    }
+
+    private enum WarpType
+    {
+        None,
+        Copy,
+        Custom,
+        Reference,
+        Add,
+        Modify,
+        AddReference
+    }
+
+    public static void GameSourceModify(FileInfo file)
+    {
+        try
+        {
+            var obj = UniqueIDScriptable.GetFromID(Path.GetFileNameWithoutExtension(file.Name));
+            if (!obj) return;
+
+            var jsonData = JsonMapper.ToObject(File.ReadAllText(file.FullName));
+
+            ModifyMatchCardTag(obj, jsonData);
+            ModifyMatchCardType(obj, jsonData);
+            ModifyObject(obj, jsonData);
+        }
+        catch (Exception e)
+        {
+            Plugin.Log.LogWarning(e);
+        }
+    }
+
+    private static void ModifyMatchCardTag(object source, JsonData jsonData)
+    {
+        if (source is not CardData || !jsonData.ContainsKey("MatchTagWarpData")) return;
+
+        var warpData = jsonData["MatchTagWarpData"];
+        jsonData.Remove("MatchTagWarpData");
+
+        if (!warpData.IsArray) return;
+
+        for (var i = 0; i < warpData.Count; i++)
+        {
+            var data = warpData[i];
+            if (!data.IsString) return;
+
+            var tag = Database.GetData<CardTag>(data.ToString());
+            foreach (var card in tag.GetCards())
+            {
+                if (ReferenceEquals(card, source)) continue;
+                ModifyObject(card, jsonData);
+            }
+        }
+    }
+
+    private static void ModifyMatchCardType(object source, JsonData jsonData)
+    {
+        if (source is not CardData || !jsonData.ContainsKey("MatchTypeWarpData")) return;
+
+        var warpData = jsonData["MatchTypeWarpData"];
+        jsonData.Remove("MatchTypeWarpData");
+
+        if (!warpData.IsString) return;
+
+        if (!Enum.TryParse(warpData.ToString(), out CardTypes type))
+        {
+            Plugin.Log.LogWarning($"Unmatched CardTypes {warpData}");
+            return;
+        }
+
+        foreach (var card in type.GetCards())
+        {
+            if (ReferenceEquals(card, source)) continue;
+            ModifyObject(card, jsonData);
+        }
+    }
+
+    public static void ModifyObject(object obj, JsonData jsonData)
+    {
+        if (obj is null) return;
+        if (!jsonData.IsObject) return;
+
+        var type = obj.GetType();
+
+        foreach (var key in jsonData.Keys)
+        {
+            if (!key.EndsWith("WarpData")) continue;
+
+            var jsonField = jsonData[key];
+            if (!jsonField.IsObject && !jsonField.IsArray) continue;
+            var fieldName = key.Substring(0, key.Length - 8);
+
+            try
+            {
+                var warpType = (WarpType)(int)jsonData[$"{fieldName}WarpType"];
+
+                var field = GetField(type, fieldName);
+                if (field is null) continue;
+                if (field.IsNotSerialized) continue;
+
+                if (jsonField.IsObject)
+                {
+                    if (warpType is not WarpType.Modify) continue;
+                }
+                else
+                {
+                    ModifyArray(obj, field.GetValue(obj), jsonField, warpType, field);
+                }
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.LogWarning(e);
+            }
+        }
+    }
+
+    private static void ModifyArray(object source, object obj, JsonData jsonData, WarpType warpType, FieldInfo field)
+    {
+        if (obj is null) return;
+        if (!jsonData.IsArray) return;
+
+        var type = obj.GetType();
+        // if (!field.FieldType.IsAssignableFrom(type)) return;
+
+        if (type.IsArray)
+        {
+            var elementType = type.GetElementType();
+            if (elementType is null) return;
+
+            var arr = (Array)obj;
+            if (arr.Rank > 1) return;
+
+            if (warpType is WarpType.AddReference)
+            {
+                if (!elementType.IsSubclassOf(typeof(Object))) return;
+
+                var arrNew = Array.CreateInstance(elementType, arr.Length + jsonData.Count);
+                for (var i = 0; i < arr.Length; i++)
+                {
+                    arrNew.SetValue(arr.GetValue(i), i);
+                }
+
+                ModifyWarpDataOfArray(arrNew, elementType, jsonData, arr.Length);
+                field.SetValue(source, arrNew);
+            }
+            else if (warpType is WarpType.Modify)
+            {
+                if (elementType.IsSubclassOf(typeof(Object))) return;
+
+                for (var i = 0; i < jsonData.Count; i++)
+                {
+                    ModifyObject(arr.GetValue(i), jsonData[i]);
+                }
+            }
+            else if (warpType is WarpType.Add)
+            {
+                if (elementType.IsSubclassOf(typeof(Object))) return;
+
+                var arrNew = Array.CreateInstance(elementType, arr.Length + jsonData.Count);
+                for (var i = 0; i < arr.Length; i++)
+                {
+                    arrNew.SetValue(arr.GetValue(i), i);
+                }
+
+                for (var i = 0; i < jsonData.Count; i++)
+                {
+                    arrNew.SetValue(FromJson(elementType, jsonData[i]), i + arr.Length);
+                }
+
+                field.SetValue(source, arrNew);
+            }
+        }
+        else if (GetIListType(type, out var elementType))
+        {
+            if (obj is not IList list)
+            {
+                Plugin.Log.LogWarning("Object type is not implement IList interface.");
+                return;
+            }
+
+            if (warpType is WarpType.AddReference)
+            {
+                if (!elementType.IsSubclassOf(typeof(Object))) return;
+
+                ModifyWarpDataOfList(list, elementType, jsonData);
+            }
+            else if (warpType is WarpType.Modify)
+            {
+                if (elementType.IsSubclassOf(typeof(Object))) return;
+
+                for (var i = 0; i < jsonData.Count; i++)
+                {
+                    ModifyObject(list[i], jsonData[i]);
+                }
+            }
+            else if (warpType is WarpType.Add)
+            {
+                if (elementType.IsSubclassOf(typeof(Object))) return;
+
+                for (var i = 0; i < jsonData.Count; i++)
+                {
+                    list.Add(FromJson(elementType, jsonData[i]));
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// 修改数组映射数据
+    /// </summary>
+    /// <param name="arr">数组对象</param>
+    /// <param name="elementType">元素类型</param>
+    /// <param name="warpData">JSON数据</param>
+    /// <param name="startIndex">起始索引</param>
+    private static void ModifyWarpDataOfArray(Array arr, Type elementType, JsonData warpData, int startIndex)
+    {
+        if (!warpData.IsArray) return;
+
+        var count = warpData.Count;
+        if (arr.Length < count + startIndex) return;
+
+        for (var i = 0; i < count; i++)
+        {
+            var data = warpData[i];
+            if (!data.IsString) continue;
+
+            var unityObj = GetWarpObject(elementType, data.ToString());
+            if (unityObj is null) continue;
+
+            arr.SetValue(unityObj, i + startIndex);
+        }
+    }
+
+    /// <summary>
+    /// 修改列表映射数据
+    /// </summary>
+    /// <param name="list">列表</param>
+    /// <param name="elementType">元素类型</param>
+    /// <param name="warpData">JSON数据</param>
+    private static void ModifyWarpDataOfList(IList list, Type elementType, JsonData warpData)
+    {
+        if (!warpData.IsArray) return;
+
+        var count = warpData.Count;
+        for (var i = 0; i < count; i++)
+        {
+            var data = warpData[i];
+            if (!data.IsString) continue;
+
+            var unityObj = GetWarpObject(elementType, data.ToString());
+            if (unityObj is null) continue;
+
+            list.Add(unityObj);
+        }
     }
 }

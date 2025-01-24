@@ -121,6 +121,7 @@
         <Compile Include="Data\Database.cs" />
         <Compile Include="Data\DataInfo.cs" />
         <Compile Include="Data\DataInfoAttribute.cs" />
+        <Compile Include="Data\DataMap.cs" />
         <Compile Include="Data\Loader.cs" />
         <Compile Include="Extensions.cs" />
         <Compile Include="Patcher\GameLoadPatch.cs"/>
