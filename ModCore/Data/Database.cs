@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using Object = UnityEngine.Object;
 
 namespace ModCore.Data;
 
@@ -19,7 +20,7 @@ public static class Database
     /// </summary>
     /// <typeparam name="T">数据类型</typeparam>
     /// <returns>数据字典</returns>
-    public static Dictionary<string, T> GetData<T>()
+    public static Dictionary<string, T>? GetData<T>()
     {
         return AllData.TryGetValue(typeof(T), out var dict) ? dict as Dictionary<string, T> : null;
     }
@@ -29,9 +30,8 @@ public static class Database
     /// </summary>
     /// <param name="type">数据类型</param>
     /// <returns></returns>
-    public static IDictionary GetData(Type type)
+    public static IDictionary? GetData(Type type)
     {
-        if (type is null) return null;
         return AllData.TryGetValue(type, out var dict) ? dict : null;
     }
 
@@ -41,7 +41,7 @@ public static class Database
     /// <param name="key">数据键</param>
     /// <typeparam name="T">数据类型</typeparam>
     /// <returns>数据对象</returns>
-    public static T GetData<T>(string key)
+    public static T? GetData<T>(string key)
     {
         var dict = GetData<T>();
         if (dict is null) return default;
@@ -54,7 +54,7 @@ public static class Database
     /// <param name="type">数据类型</param>
     /// <param name="key">数据键</param>
     /// <returns>数据对象</returns>
-    public static object GetData(Type type, string key)
+    public static object? GetData(Type type, string key)
     {
         var dict = GetData(type);
         return dict?[key];
@@ -67,7 +67,7 @@ public static class Database
     /// <param name="skipInvalid">跳过无效值</param>
     /// <typeparam name="T">数据类型</typeparam>
     /// <returns>数据列表</returns>
-    public static IEnumerable<T> GetData<T>(IEnumerable<string> keys, bool skipInvalid = true)
+    public static IEnumerable<T?> GetData<T>(IEnumerable<string> keys, bool skipInvalid = true)
     {
         var dict = GetData<T>();
         if (dict is null) yield break;
@@ -92,7 +92,6 @@ public static class Database
     /// <param name="dict">数据对象字典</param>
     public static void AddData(Type type, IDictionary dict)
     {
-        if (type is null) return;
         if (AllData.ContainsKey(type)) return;
 
         AllData[type] = dict;
@@ -130,7 +129,35 @@ public static class Database
             return;
         }
 
-        if (dict.ContainsKey(key)) dict.Add(key, obj);
+        if (!dict.ContainsKey(key)) dict.Add(key, obj);
+    }
+
+    /// <summary>
+    /// 根据命名空间与数据键获取数据
+    /// </summary>
+    /// <param name="type">数据类型</param>
+    /// <param name="key">数据键，如果不带有命名空间且模组不为空，则先尝试直接获取，如果获取失败则附加模组数据的命名空间再尝试获取</param>
+    /// <param name="mod">模组</param>
+    /// <returns>数据对象</returns>
+    public static object? GetData(Type type, string key, ModData? mod)
+    {
+        if (mod is null || ModData.HasNamespace(key)) return GetData(type, key);
+
+        return GetData(type, key) ?? GetData(type, $"{mod.Namespace}:{key}");
+    }
+
+    /// <summary>
+    /// 根据命名空间与数据键获取数据
+    /// </summary>
+    /// <param name="key">数据键，如果不带有命名空间且模组不为空，则先尝试直接获取，如果获取失败则附加模组数据的命名空间再尝试获取</param>
+    /// <param name="mod">模组</param>
+    /// <typeparam name="T">数据类型</typeparam>
+    /// <returns>数据对象</returns>
+    public static T? GetData<T>(string key, ModData? mod)
+    {
+        if (mod is null || ModData.HasNamespace(key)) return GetData<T>(key);
+
+        return GetData<T>(key) ?? GetData<T>($"{mod.Namespace}:{key}");
     }
 
     // /// <summary>

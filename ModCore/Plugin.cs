@@ -1,23 +1,24 @@
 ﻿using BepInEx;
 using HarmonyLib;
+using ModCore.Services;
 
 namespace ModCore;
 
 [BepInPlugin(PluginGuid, PluginName, PluginVersion)]
+[ModNamespace(PluginName)]
 internal class Plugin : BaseUnityPlugin<Plugin>
 {
     public const string PluginGuid = "Pikachu.CSTI.ModCore";
     public const string PluginName = "ModCore";
-    public const string PluginVersion = "1.2.0";
+    public const string PluginVersion = "2.0.1";
 
     private static readonly Harmony Harmony = new(PluginGuid);
 
-    protected override void Awake()
+    protected override void OnAwake()
     {
-        base.Awake();
         Harmony.PatchAll();
-        Logger.LogMessage($"Plugin {PluginName} is loaded!");
+
+        ModService.Init();
+        LocalizationService.Init();
     }
 }
-
-public class ModCoreAfterAttribute() : HarmonyAfter(Plugin.PluginGuid);

@@ -7,28 +7,36 @@ namespace ModCore.Data;
 /// </summary>
 /// <param name="type">类型</param>
 /// <param name="name">名称</param>
-public class DataInfo(Type type, string name = "") : IEquatable<DataInfo>
+public class DataInfo(Type type, string name = "")
 {
     /// <summary>
     /// 数据类型
     /// </summary>
-    public Type Type { get; } = type;
+    public Type Type { get; } = type ?? throw new ArgumentNullException(nameof(type));
 
     /// <summary>
     /// 数据名称
     /// </summary>
     public string Name { get; } = string.IsNullOrWhiteSpace(name) ? type.Name : name;
 
-    public bool Equals(DataInfo other)
-    {
-        if (other is null) return false;
+    /// <summary>
+    /// 允许回退到模组根目录加载
+    /// </summary>
+    public bool CanFallbackToRoot { get; } = true;
 
-        return Type == other.Type;
+    public DataInfo(Type type, bool canFallbackToRoot) : this(type)
+    {
+        CanFallbackToRoot = canFallbackToRoot;
     }
 
-    public override bool Equals(object obj)
+    public DataInfo(Type type, string name, bool canFallbackToRoot) : this(type, name)
     {
-        return Equals(obj as DataInfo);
+        CanFallbackToRoot = canFallbackToRoot;
+    }
+
+    public override bool Equals(object? obj)
+    {
+        return obj is DataInfo other && Type == other.Type;
     }
 
     public override int GetHashCode()

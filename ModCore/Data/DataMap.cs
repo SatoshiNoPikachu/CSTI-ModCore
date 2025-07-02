@@ -11,7 +11,10 @@ public static class DataMap
 
     internal static void Mapping()
     {
-        foreach (var card in Database.GetData<CardData>().Values)
+        var cards = Database.GetData<CardData>()?.Values;
+        if (cards is null) return;
+        
+        foreach (var card in cards)
         {
             MapCardTags(card);
             MapCardTypes(card);

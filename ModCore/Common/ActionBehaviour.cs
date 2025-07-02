@@ -7,23 +7,23 @@ public class ActionBehaviour : MonoBehaviour
 {
     public static ActionBehaviour Create(GameObject go)
     {
-        return go?.AddComponent<ActionBehaviour>();
+        return go.AddComponent<ActionBehaviour>();
     }
 
-    public static ActionBehaviour Create(MonoBehaviour mb)
+    public static ActionBehaviour Create(Component mb)
     {
-        return mb?.gameObject.AddComponent<ActionBehaviour>();
+        return mb.gameObject.AddComponent<ActionBehaviour>();
     }
 
     // public Action OnAwakeAction { get; set; }
 
-    public Action OnDestroyAction { get; set; }
+    public Action? OnDestroyAction { get; set; }
 
-    public Action OnEnableAction { get; set; }
+    public Action? OnEnableAction { get; set; }
 
-    public Action OnStartAction { get; set; }
+    public Action? OnStartAction { get; set; }
 
-    public Action OnUpdateAction { get; set; }
+    public Action? OnUpdateAction { get; set; }
 
     private void OnDestroy()
     {

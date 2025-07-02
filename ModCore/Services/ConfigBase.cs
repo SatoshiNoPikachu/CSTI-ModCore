@@ -20,7 +20,7 @@ public abstract class ConfigBase<TPlugin> where TPlugin : BaseUnityPlugin<TPlugi
     /// <param name="key">键名称</param>
     /// <typeparam name="T">配置项值类型</typeparam>
     /// <returns>配置项</returns>
-    public static ConfigEntry<T> Get<T>(string section, string key)
+    public static ConfigEntry<T>? Get<T>(string section, string key)
     {
         return Config.TryGetEntry<T>(section, key, out var config) ? config : null;
     }

@@ -1,6 +1,9 @@
 ﻿using System.IO;
+using System.Reflection;
 using BepInEx;
 using BepInEx.Logging;
+using ModCore.Data;
+using ModCore.Services;
 
 namespace ModCore;
 
@@ -23,14 +26,33 @@ public abstract class BaseUnityPlugin<T> : BaseUnityPlugin where T : BaseUnityPl
     /// <summary>
     /// 插件所在目录路径
     /// </summary>
-    public static string PluginPath => Path.GetDirectoryName(Instance.Info.Location);
+    public static string PluginPath => Path.GetDirectoryName(Instance.Info.Location)!;
+
+    /// <summary>
+    /// 模组命名空间
+    /// </summary>
+    public static string? ModNamespace { get; private set; }
+
+    /// <summary>
+    /// 模组数据
+    /// </summary>
+    public static ModData? ModData { get; private set; }
 
     /// <summary>
     /// 初始化插件
     /// </summary>
-    protected virtual void Awake()
+    protected void Awake()
     {
         Instance = (T)this;
         Log = Logger;
+
+        ModNamespace = typeof(T).GetCustomAttribute<ModNamespaceAttribute>()?.Namespace;
+        if (ModNamespace is not null) ModData = ModService.GetMod(ModNamespace);
+
+        OnAwake();
+    }
+
+    protected virtual void OnAwake()
+    {
     }
 }

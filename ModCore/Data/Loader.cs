@@ -1,11 +1,18 @@
 ﻿using System;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using HarmonyLib;
 using LitJson;
+using ModCore.Services;
+using ModCore.UI;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
@@ -16,15 +23,21 @@ namespace ModCore.Data;
 /// </summary>
 public static class Loader
 {
+    public const string DataPath = "Data";
+
+    public const string GameSourceModifyPath = $"{DataPath}/GameSourceModify";
+
+    public const string DataObjectModifyPath = $"{DataPath}/DataObjectModify";
+
     /// <summary>
     /// 加载之前事件
     /// </summary>
-    public static event Action LoadBeforeEvent;
+    public static event Action? LoadBeforeEvent;
 
     /// <summary>
     /// 加载完成事件
     /// </summary>
-    public static event Action LoadCompleteEvent;
+    public static event Action? LoadCompleteEvent;
 
     /// <summary>
     /// 是否加载完成
@@ -34,17 +47,17 @@ public static class Loader
     /// <summary>
     /// 数据信息集合
     /// </summary>
-    private static HashSet<DataInfo> _dataInfos = [];
+    private static readonly Dictionary<string, DataInfo> DataInfos = [];
 
     /// <summary>
     /// 预加载数据
     /// </summary>
-    private static List<(object, JsonData)> _preloadData = [];
+    private static List<(object Obj, JsonData JsonData)>? _preloadData = [];
 
     /// <summary>
     /// 字段信息缓存
     /// </summary>
-    private static Dictionary<Type, Dictionary<string, FieldInfo>> _cacheFields = [];
+    private static ConcurrentDictionary<Type, ConcurrentDictionary<string, Lazy<FieldInfo>>> _cacheFields = [];
 
     /// <summary>
     /// 注册类型
@@ -53,10 +66,11 @@ public static class Loader
     /// <returns>是否注册成功</returns>
     public static bool RegisterType(DataInfo info)
     {
-        if (IsLoaded || info.Type is null) return false;
-        if (!_dataInfos.Add(info)) return false;
+        if (IsLoaded) return false;
+        if (DataInfos.ContainsKey(info.Name)) return false;
 
-        Plugin.Log.LogInfo($"Registered type {info.Type.FullName} in loader.");
+        DataInfos[info.Name] = info;
+        Plugin.Log.LogInfo($"Registered type {info.Name} ({info.Type.FullName}) in loader.");
         return true;
     }
 
@@ -75,59 +89,57 @@ public static class Loader
     }
 
     /// <summary>
-    /// 加载全部数据
+    /// 异步加载
     /// </summary>
-    internal static void LoadAllData()
+    internal static async void LoadAsync()
     {
-        if (IsLoaded) return;
-
-        LoadBeforeEvent?.Invoke();
-        InitDatabaseAndAutoRegisterType();
-
-        var modDirs = new DirectoryInfo(BepInEx.Paths.PluginPath).GetDirectories();
-
-        LoadAllTexture2D(modDirs, "Resource/Texture2D");
-
-        var warpData = new List<(object, JsonData)>();
-        foreach (var info in _dataInfos)
+        try
         {
-            Plugin.Log.LogMessage($"Load data {info.Name}");
+            if (IsLoaded) return;
 
-            var data = LoadData(info, modDirs);
-            if (data is null) continue;
-            warpData.AddRange(data);
+            LoadingScreen.SetText(LoadingScreen.TextInit);
+
+            LoadBeforeEvent?.Invoke();
+
+            InitDatabaseAndAutoRegisterType();
+
+            await Task.Yield();
+
+            if (!LoadingScreen.CheckGameLoad()) return;
+            LoadingScreen.SetText(LoadingScreen.TextLoadAsset);
+
+            var sw = Stopwatch.StartNew();
+
+            var taskJson = LoadJsonDataAsync();
+            var taskTex = TextureLoader.LoadTexture2DAndSpriteAsync();
+            await taskTex;
+
+            var objMap = await taskJson;
+            LoadingScreen.SetText(LoadingScreen.TextFixData);
+            await FixDataAsync(objMap);
+
+            await ModifyAsync();
+
+            sw.Stop();
+            Plugin.Log.LogMessage($"Total loading time: {sw.ElapsedMilliseconds}ms");
+
+            LoadingScreen.SetText(LoadingScreen.TextProcessEvent);
+
+            DataMap.Mapping();
+
+            LoadCompleteEvent?.Invoke();
+
+            _preloadData = null;
+            _cacheFields = [];
+            IsLoaded = true;
+
+            LoadingScreen.Loaded();
         }
-
-        foreach (var (obj, jsonData) in _preloadData)
+        catch (Exception ex)
         {
-            FixData(obj, jsonData);
-
-            if (obj is not UniqueIDScriptable uidObj) continue;
-
-            if (UniqueIDScriptable.AllUniqueObjects.ContainsKey(uidObj.UniqueID))
-            {
-                Plugin.Log.LogWarning($"Preload not register same uid {uidObj.UniqueID}.");
-            }
-            else
-            {
-                uidObj.Init();
-            }
-
-            GameLoad.Instance.DataBase.AllData.Add(uidObj);
+            Plugin.Log.LogError(ex);
+            LoadingScreen.OnError();
         }
-
-        foreach (var (obj, jsonData) in warpData)
-        {
-            FixData(obj, jsonData);
-        }
-
-        DataMap.Mapping();
-
-        LoadCompleteEvent?.Invoke();
-        _dataInfos = null;
-        _preloadData = null;
-        _cacheFields = [];
-        IsLoaded = true;
     }
 
     /// <summary>
@@ -138,6 +150,7 @@ public static class Loader
         foreach (var type in AccessTools.AllTypes())
         {
             if (type.IsInterface || type.IsGenericTypeDefinition) continue;
+            if (type.IsAbstract) continue;
 
             var isSo = type.IsSubclassOf(typeof(ScriptableObject));
             if (isSo)
@@ -146,6 +159,8 @@ public static class Loader
                 if (objs?.Length > 0)
                 {
                     var dict = Database.GetData(type) ?? MakeDataDict(type);
+                    if (dict is null) continue;
+
                     foreach (var obj in objs)
                     {
                         var so = (ScriptableObject)obj;
@@ -161,155 +176,328 @@ public static class Loader
 
                     Database.AddData(type, dict);
                 }
+
+                if (type.Module.Name is "Assembly-CSharp.dll") RegisterType(new DataInfo(type, false));
             }
 
-            if (type.IsAbstract) continue;
             if (!type.IsSerializable && !isSo) continue;
 
             var attr = type.GetCustomAttribute<DataInfoAttribute>();
             if (attr is null) continue;
 
-            RegisterType(new DataInfo(type, string.IsNullOrWhiteSpace(attr.Name) ? type.Name : attr.Name));
+            RegisterType(new DataInfo(type, string.IsNullOrWhiteSpace(attr.Name) ? type.Name : attr.Name,
+                attr.CanFallbackToRoot));
         }
     }
 
     /// <summary>
-    /// 加载全部2D纹理
+    /// 异步读取文本文件
     /// </summary>
-    /// <param name="dirs">目录信息</param>
-    /// <param name="texPath">纹理路径</param>
-    /// <returns>精灵字典</returns>
-    private static void LoadAllTexture2D(IEnumerable<DirectoryInfo> dirs, string texPath)
+    /// <param name="path">文件路径</param>
+    /// <returns>文件文本</returns>
+    private static async Task<string> ReadFileTextAsync(string path)
     {
-        var sprites = Database.GetData<Sprite>();
-        if (sprites is null)
-        {
-            sprites = new Dictionary<string, Sprite>();
-            Database.AddData(sprites);
-        }
+        using var reader = new StreamReader(path, Encoding.UTF8);
+        return await reader.ReadToEndAsync();
+    }
 
-        foreach (var sprite in Resources.FindObjectsOfTypeAll<Sprite>())
-        {
-            if (sprites.ContainsKey(sprite.name)) continue;
-            sprites.Add(sprite.name, sprite);
-        }
+    /// <summary>
+    /// Json加载时上下文
+    /// </summary>
+    /// <param name="obj"></param>
+    /// <param name="path"></param>
+    private class JsonLoadingContext(object obj, string path)
+    {
+        /// <summary>
+        /// 对象
+        /// </summary>
+        public object Obj { get; } = obj;
 
-        foreach (var dir in dirs)
-        {
-            var path = Path.Combine(dir.FullName, texPath);
-            if (!Directory.Exists(path)) continue;
+        /// <summary>
+        /// 文件路径
+        /// </summary>
+        public string Path { get; } = path;
 
-            var files = new DirectoryInfo(path).EnumerateFileSystemInfos("*", SearchOption.AllDirectories);
-            foreach (var file in files)
+        /// <summary>
+        /// 有效的
+        /// </summary>
+        public bool Valid { get; set; } = true;
+    }
+
+    /// <summary>
+    /// 异步加载Json数据
+    /// </summary>
+    /// <returns></returns>
+    private static async Task<Dictionary<ModData, List<JsonLoadingContext>>> LoadJsonDataAsync()
+    {
+        var objMap = new Dictionary<ModData, List<JsonLoadingContext>>();
+        var objContexts = objMap.SelectMany(kvp => kvp.Value);
+
+        foreach (var dataInfo in DataInfos.Values)
+        {
+            var type = dataInfo.Type;
+            var dataName = dataInfo.Name;
+
+            var isSo = type.IsSubclassOf(typeof(ScriptableObject));
+            var isUidObj = type.IsSubclassOf(typeof(UniqueIDScriptable));
+
+            var dict = Database.GetData(type) ?? MakeDataDict(type);
+            if (dict is null) continue;
+
+            Database.AddData(type, dict);
+
+            foreach (var mod in ModService.GetMods())
             {
-                if (file.Extension.ToLower() is not (".png" or ".jpg" or ".jpeg")) continue;
-
-                var name = Path.GetFileNameWithoutExtension(file.Name);
-                if (sprites.ContainsKey(name))
+                var dataDirPath = isUidObj
+                    ? Path.Combine(mod.RootPath, DataPath, dataName)
+                    : Path.Combine(mod.RootPath, DataPath, "ScriptableObject", dataName);
+                if (!Directory.Exists(dataDirPath))
                 {
-                    Plugin.Log.LogWarning($"{dir.Name} not load texture same name {name}.");
-                    continue;
+                    if (!dataInfo.CanFallbackToRoot) continue;
+
+                    dataDirPath = isUidObj
+                        ? Path.Combine(mod.RootPath, dataName)
+                        : Path.Combine(mod.RootPath, "ScriptableObject", dataName);
+
+                    if (!Directory.Exists(dataDirPath)) continue;
                 }
 
-                var bytes = File.ReadAllBytes(file.FullName);
-                var tex = new Texture2D(0, 0)
+                if (!objMap.TryGetValue(mod, out var list))
                 {
-                    name = name
-                };
-                if (!tex.LoadImage(bytes))
-                {
-                    Object.Destroy(tex);
-                    continue;
+                    list = [];
+                    objMap.Add(mod, list);
                 }
 
-                var sprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), Vector2.zero);
-                sprite.name = name;
+                var files = Directory.EnumerateFiles(dataDirPath, "*.json", SearchOption.AllDirectories);
+                foreach (var filePath in files)
+                {
+                    var fileName = Path.GetFileNameWithoutExtension(filePath);
+                    if (ModData.HasNamespace(fileName))
+                    {
+                        Plugin.Log.LogWarning(
+                            $"{mod.Namespace} not load the name contains namespace separator from {filePath}.");
+                        continue;
+                    }
 
-                sprites.Add(name, sprite);
+                    var name = $"{mod.Namespace}:{fileName}";
+                    if (dict.Contains(name))
+                    {
+                        Plugin.Log.LogWarning($"{mod.Namespace} not load same name {dataName} from {filePath}.");
+                        continue;
+                    }
+
+                    try
+                    {
+                        var obj = isSo ? ScriptableObject.CreateInstance(type) : Activator.CreateInstance(type);
+                        if (isSo) ((ScriptableObject)obj).name = name;
+
+                        dict.Add(name, obj);
+                        list.Add(new JsonLoadingContext(obj, filePath));
+                    }
+                    catch (Exception ex)
+                    {
+                        Plugin.Log.LogWarning($"{mod.Namespace} load {dataName} failed: {ex}");
+                    }
+                }
             }
         }
-    }
 
-    /// <summary>
-    /// 加载数据
-    /// </summary>
-    /// <param name="info">数据信息</param>
-    /// <param name="modDirs">目录信息</param>
-    /// <returns>对象和Json数据的元组的可迭代对象</returns>
-    private static IEnumerable<(object, JsonData)> LoadData(DataInfo info, IEnumerable<DirectoryInfo> modDirs)
-    {
-        var type = info.Type;
-        var dataName = info.Name;
-
-        var isSo = type.IsSubclassOf(typeof(ScriptableObject));
-        var isUidObj = type.IsSubclassOf(typeof(UniqueIDScriptable));
+        await Task.Run(() =>
+        {
+            Parallel.ForEach(objContexts, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
+                context =>
+                {
+                    try
+                    {
+                        var json = File.ReadAllText(context.Path, Encoding.UTF8);
+                        JsonUtility.FromJsonOverwrite(json, context.Obj);
+                    }
+                    catch (Exception ex)
+                    {
+                        context.Valid = false;
+                        Plugin.Log.LogWarning($"Loading {context.Path} failed: {ex}");
+                    }
+                });
+        });
 
         var allUidObj = GameLoad.Instance.DataBase.AllData;
+        var allUidObjDict = UniqueIDScriptable.AllUniqueObjects;
 
-        var dict = Database.GetData(type) ?? MakeDataDict(type);
-        var list = new List<(object, JsonData)>();
-
-        foreach (var modDir in modDirs)
+        foreach (var (obj, _) in _preloadData!)
         {
-            var path = isUidObj
-                ? Path.Combine(modDir.FullName, dataName)
-                : Path.Combine(modDir.FullName, "ScriptableObject", dataName);
-            if (!Directory.Exists(path)) continue;
+            if (obj is not UniqueIDScriptable uidObj) continue;
 
-            var files = new DirectoryInfo(path).GetFiles("*.json", SearchOption.AllDirectories);
-            foreach (var file in files)
+            var uid = uidObj.UniqueID;
+            if (allUidObjDict.ContainsKey(uid))
             {
-                var name = Path.GetFileNameWithoutExtension(file.Name);
-                if (dict.Contains(name))
+                Plugin.Log.LogWarning($"Preload not register same uid {uid}.");
+                continue;
+            }
+
+            uidObj.Init();
+            allUidObj.Add(uidObj);
+        }
+
+        foreach (var (mod, contexts) in objMap)
+        {
+            foreach (var context in contexts)
+            {
+                if (!context.Valid || context.Obj is not UniqueIDScriptable uidObj) continue;
+
+                var uid = uidObj.UniqueID;
+                if (allUidObjDict.ContainsKey(uid))
                 {
-                    Plugin.Log.LogWarning($"{modDir.Name} not load {dataName} same name {name}.");
+                    Plugin.Log.LogWarning(
+                        $"{mod.Namespace} has same uid {uid} of type {uidObj.GetType().Name} from {context.Path}.");
                     continue;
                 }
 
-                object obj = null;
-                try
-                {
-                    obj = isSo ? ScriptableObject.CreateInstance(type) : Activator.CreateInstance(type);
-                    var json = File.ReadAllText(file.FullName, Encoding.UTF8);
-                    JsonUtility.FromJsonOverwrite(json, obj);
-
-                    if (isSo)
-                    {
-                        var so = (ScriptableObject)obj;
-                        so.name = name;
-                    }
-
-                    if (isUidObj)
-                    {
-                        var uidObj = (UniqueIDScriptable)obj;
-                        var uid = uidObj.UniqueID;
-                        if (UniqueIDScriptable.AllUniqueObjects.ContainsKey(uid))
-                        {
-                            Plugin.Log.LogWarning($"{modDir.Name} not load {dataName} same uid {uid}.");
-                            Object.Destroy(uidObj);
-                            continue;
-                        }
-
-                        uidObj.Init();
-                        allUidObj.Add(uidObj);
-                    }
-
-                    dict.Add(name, obj);
-
-                    list.Add((obj, JsonMapper.ToObject(json)));
-                }
-                catch (Exception e)
-                {
-                    if (isSo && obj != null) Object.Destroy((Object)obj);
-
-                    Plugin.Log.LogError(e);
-                }
+                uidObj.Init();
+                allUidObj.Add(uidObj);
             }
         }
 
-        Database.AddData(type, dict);
+        return objMap;
+    }
 
-        return list;
+    private static async Task FixDataAsync(Dictionary<ModData, List<JsonLoadingContext>> objMap)
+    {
+        await Task.Run(() =>
+        {
+            Parallel.ForEach(_preloadData!, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
+                context => FixData(context.Obj, context.JsonData, null));
+        });
+
+        await Task.Run(async () =>
+        {
+            var sw = Stopwatch.StartNew();
+
+            var maxSemaphoreNum = Environment.ProcessorCount;
+            var semaphore = new SemaphoreSlim(maxSemaphoreNum);
+            var tcs = new TaskCompletionSource<bool>();
+            var flag = false;
+
+            foreach (var (mod, contexts) in objMap)
+            {
+                foreach (var context in contexts.Where(context => context.Valid))
+                {
+                    await semaphore.WaitAsync();
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            // var json = File.ReadAllText(context.Path, Encoding.UTF8);
+                            var json = await ReadFileTextAsync(context.Path);
+                            FixData(context.Obj, JsonMapper.ToObject(json), mod);
+                        }
+                        catch (Exception ex)
+                        {
+                            Plugin.Log.LogWarning($"{mod.Namespace} fix data failed from {context.Path}: {ex}");
+                        }
+                        finally
+                        {
+                            semaphore.Release();
+                            // ReSharper disable once AccessToModifiedClosure
+                            if (flag && semaphore.CurrentCount == maxSemaphoreNum) tcs.TrySetResult(true);
+                        }
+                    });
+                }
+            }
+
+            flag = true;
+
+            if (semaphore.CurrentCount != maxSemaphoreNum)
+            {
+                await tcs.Task;
+            }
+
+            tcs.TrySetResult(true);
+
+            sw.Stop();
+            Plugin.Log.LogMessage($"Fix data time: {sw.ElapsedMilliseconds}ms");
+        });
+    }
+
+    private static async Task ModifyAsync()
+    {
+        var semJson = new SemaphoreSlim(Environment.ProcessorCount);
+        var semModify = new SemaphoreSlim(1);
+        var tasks = new List<Task>();
+
+        foreach (var mod in ModService.GetMods())
+        {
+            foreach (var (file, obj) in GetModifyTargets(Path.Combine(mod.RootPath, GameSourceModifyPath), true, mod)
+                         .Concat(GetModifyTargets(Path.Combine(mod.RootPath, DataObjectModifyPath), false, mod)))
+            {
+                await semJson.WaitAsync();
+
+                tasks.Add(Task.Run(async () =>
+                {
+                    try
+                    {
+                        var jsonData = JsonMapper.ToObject(await ReadFileTextAsync(file));
+                        await semModify.WaitAsync();
+                        GameSourceModify(obj, jsonData, mod);
+                    }
+                    catch (Exception ex)
+                    {
+                        Plugin.Log.LogWarning($"Modify failed from {file}: {ex}");
+                    }
+                    finally
+                    {
+                        semJson.Release();
+                        semModify.Release();
+                    }
+                }));
+            }
+        }
+
+        await Task.WhenAll(tasks);
+    }
+
+    private static IEnumerable<(string FilePath, object Obj)> GetModifyTargets(string path, bool isUid, ModData mod)
+    {
+        if (!Directory.Exists(path)) yield break;
+
+        var allUidObjDict = UniqueIDScriptable.AllUniqueObjects;
+
+        foreach (var file in Directory.EnumerateFiles(path, "*.json", SearchOption.AllDirectories))
+        {
+            if (isUid)
+            {
+                var uid = Path.GetFileNameWithoutExtension(file);
+                if (!allUidObjDict.TryGetValue(uid, out var uidObj))
+                {
+                    Plugin.Log.LogWarning($"Modify: Cannot find uid {uid} from {file}.");
+                    continue;
+                }
+
+                if (!uidObj) continue;
+
+                yield return (file, uidObj);
+            }
+            else
+            {
+                var dataName = Directory.GetParent(file)?.Name;
+                if (dataName is null) continue;
+
+                if (!DataInfos.TryGetValue(dataName, out var info))
+                {
+                    Plugin.Log.LogWarning($"Modify: Cannot find data name for {dataName} from {file}.");
+                    continue;
+                }
+
+                var key = Path.GetFileNameWithoutExtension(file);
+                var obj = Database.GetData(info.Type, key, mod);
+                if (obj is null)
+                {
+                    Plugin.Log.LogWarning($"Modify: Cannot find data key {key} for {dataName} from {file}.");
+                    continue;
+                }
+
+                yield return (file, obj);
+            }
+        }
     }
 
     /// <summary>
@@ -339,7 +527,7 @@ public static class Loader
             Database.AddObject(name, obj);
         }
 
-        _preloadData.Add((obj, JsonMapper.ToObject(json)));
+        _preloadData!.Add((obj, JsonMapper.ToObject(json)));
     }
 
     /// <summary>
@@ -347,9 +535,11 @@ public static class Loader
     /// </summary>
     /// <param name="obj">对象</param>
     /// <param name="jsonData">Json数据</param>
+    /// <param name="mod">模组</param>
     /// <param name="curField">当前字段信息，供序列对象使用</param>
     /// <param name="parent">当前字段信息，供序列对象使用</param>
-    public static void FixData(object obj, JsonData jsonData, FieldInfo curField = null, JsonData parent = null)
+    public static void FixData(object? obj, JsonData jsonData, ModData? mod, FieldInfo? curField = null,
+        JsonData? parent = null)
     {
         if (obj is null)
         {
@@ -377,7 +567,7 @@ public static class Loader
                     var fieldType = field.FieldType;
                     if (fieldType.IsSubclassOf(typeof(Object)))
                     {
-                        WarpDataOfObject(obj, field, jsonData);
+                        WarpDataOfObject(obj, field, jsonData, mod);
                         continue;
                     }
 
@@ -395,7 +585,7 @@ public static class Loader
                             }
                         }
 
-                        FixData(fieldValue, jsonField, field, jsonData);
+                        FixData(fieldValue, jsonField, mod, field, jsonData);
                     }
                     else if (jsonField.IsArray)
                     {
@@ -411,11 +601,11 @@ public static class Loader
                             fieldValue = Activator.CreateInstance(fieldType);
                         }
 
-                        FixData(fieldValue, jsonField, field, jsonData);
+                        FixData(fieldValue, jsonField, mod, field, jsonData);
                     }
                     else
                     {
-                        fieldValue = FromJson(fieldType, jsonField);
+                        fieldValue = FromJson(fieldType, jsonField, mod);
                     }
 
                     field.SetValue(obj, fieldValue);
@@ -448,7 +638,13 @@ public static class Loader
 
                     if (elementType.IsSubclassOf(typeof(Object)))
                     {
-                        WarpDataOfArray(arr, curField, elementType, parent);
+                        if (curField is null || parent is null)
+                        {
+                            Plugin.Log.LogWarning("FixData on Array missing parameters.");
+                            return;
+                        }
+
+                        WarpDataOfArray(arr, curField, elementType, parent, mod);
                         return;
                     }
 
@@ -459,7 +655,7 @@ public static class Loader
                         for (var i = 0; i < jsonData.Count; i++)
                         {
                             var element = arr.GetValue(i);
-                            FixData(element, jsonData[i]);
+                            FixData(element, jsonData[i], mod);
                             if (elementType.IsValueType) arr.SetValue(element, i);
                         }
 
@@ -468,7 +664,7 @@ public static class Loader
 
                     for (var i = 0; i < jsonData.Count; i++)
                     {
-                        var element = FromJson(elementType, jsonData[i]);
+                        var element = FromJson(elementType, jsonData[i], mod);
                         arr.SetValue(element, i);
                     }
                 }
@@ -480,9 +676,15 @@ public static class Loader
                         return;
                     }
 
-                    if (elementType.IsSubclassOf(typeof(Object)))
+                    if (elementType!.IsSubclassOf(typeof(Object)))
                     {
-                        WarpDataOfIList(list, curField, elementType, parent);
+                        if (curField is null || parent is null)
+                        {
+                            Plugin.Log.LogWarning("FixData on IList missing parameters.");
+                            return;
+                        }
+
+                        WarpDataOfIList(list, curField, elementType, parent, mod);
                         return;
                     }
 
@@ -493,7 +695,7 @@ public static class Loader
                         for (var i = 0; i < jsonData.Count; i++)
                         {
                             var element = list[i];
-                            FixData(list[i], jsonData[i]);
+                            FixData(list[i], jsonData[i], mod);
                             if (elementType.IsValueType) list[i] = element;
                         }
 
@@ -502,7 +704,7 @@ public static class Loader
 
                     for (var i = 0; i < jsonData.Count; i++)
                     {
-                        var element = FromJson(elementType, jsonData[i]);
+                        var element = FromJson(elementType, jsonData[i], mod);
                         list.Add(element);
                     }
                 }
@@ -516,20 +718,40 @@ public static class Loader
         else Plugin.Log.LogWarning("JsonData type is not supported.");
     }
 
+    // /// <summary>
+    // /// 根据数据键获取映射对象
+    // /// </summary>
+    // /// <param name="type">数据类型</param>
+    // /// <param name="key">数据键</param>
+    // /// <param name="mod">模组</param>
+    // /// <returns></returns>
+    // private static Object? GetWarpObjectFromKey(Type type, string key, ModData? mod)
+    // {
+    //     if (mod is null) return Database.GetData(type, key) as Object;
+    //
+    //     if (!ModData.HasNamespace(key))
+    //     {
+    //         return (Database.GetData(type, key) ?? Database.GetData(type, $"{mod.Namespace}:{key}")) as Object;
+    //     }
+    //
+    //     return Database.GetData(type, key) as Object;
+    // }
+
     /// <summary>
     /// 获取映射对象
     /// </summary>
     /// <param name="type">数据类型</param>
-    /// <param name="key">名称或UID</param>
+    /// <param name="key">数据键或UID</param>
+    /// <param name="mod">模组</param>
     /// <returns></returns>
-    private static Object GetWarpObject(Type type, string key)
+    private static Object? GetWarpObject(Type type, string key, ModData? mod)
     {
         var unityObj = type.IsSubclassOf(typeof(UniqueIDScriptable))
-            ? UniqueIDScriptable.GetFromID(key)
-            : Database.GetData(type, key) as Object;
+            ? UniqueIDScriptable.AllUniqueObjects.TryGetValue(key, out var u) ? u : null
+            : Database.GetData(type, key, mod) as Object;
         if (!unityObj) return null;
 
-        if (unityObj.GetType() == type) return unityObj;
+        if (unityObj!.GetType() == type) return unityObj;
         Plugin.Log.LogWarning("UID object type is different from target type.");
         return null;
     }
@@ -540,7 +762,8 @@ public static class Loader
     /// <param name="obj">对象</param>
     /// <param name="field">字段信息</param>
     /// <param name="jsonData">Json数据</param>
-    private static void WarpDataOfObject(object obj, FieldInfo field, JsonData jsonData)
+    /// <param name="mod">模组</param>
+    private static void WarpDataOfObject(object obj, FieldInfo field, JsonData jsonData, ModData? mod)
     {
         var warpName = $"{field.Name}WarpData";
         if (!jsonData.ContainsKey(warpName)) return;
@@ -548,7 +771,7 @@ public static class Loader
         var warpData = jsonData[warpName];
         if (!warpData.IsString) return;
 
-        var unityObj = GetWarpObject(field.FieldType, warpData.ToString());
+        var unityObj = GetWarpObject(field.FieldType, warpData.ToString(), mod);
         if (unityObj is null) return;
 
         field.SetValue(obj, unityObj);
@@ -561,7 +784,8 @@ public static class Loader
     /// <param name="field">字段信息</param>
     /// <param name="elementType">元素类型</param>
     /// <param name="jsonData">Json数据</param>
-    private static void WarpDataOfArray(Array arr, FieldInfo field, Type elementType, JsonData jsonData)
+    /// <param name="mod">模组</param>
+    private static void WarpDataOfArray(Array arr, FieldInfo field, Type elementType, JsonData jsonData, ModData? mod)
     {
         var warpName = $"{field.Name}WarpData";
         if (!jsonData.ContainsKey(warpName)) return;
@@ -575,7 +799,7 @@ public static class Loader
             var data = warpData[i];
             if (!data.IsString) continue;
 
-            var unityObj = GetWarpObject(elementType, data.ToString());
+            var unityObj = GetWarpObject(elementType, data.ToString(), mod);
             if (unityObj is null) continue;
 
             arr.SetValue(unityObj, i);
@@ -589,7 +813,8 @@ public static class Loader
     /// <param name="field">字段信息</param>
     /// <param name="elementType">元素类型</param>
     /// <param name="jsonData">Json数据</param>
-    private static void WarpDataOfIList(IList list, FieldInfo field, Type elementType, JsonData jsonData)
+    /// <param name="mod">模组</param>
+    private static void WarpDataOfIList(IList list, FieldInfo field, Type elementType, JsonData jsonData, ModData? mod)
     {
         var warpName = $"{field.Name}WarpData";
         if (!jsonData.ContainsKey(warpName)) return;
@@ -603,7 +828,7 @@ public static class Loader
             var data = warpData[i];
             if (!data.IsString) continue;
 
-            var unityObj = GetWarpObject(elementType, data.ToString());
+            var unityObj = GetWarpObject(elementType, data.ToString(), mod);
             if (unityObj is null) continue;
 
             list.Add(unityObj);
@@ -628,22 +853,13 @@ public static class Loader
     /// <param name="type">类型</param>
     /// <param name="name">字段名称</param>
     /// <returns>字段信息</returns>
-    public static FieldInfo GetField(Type type, string name)
+    public static FieldInfo? GetField(Type type, string name)
     {
-        if (_cacheFields.TryGetValue(type, out var fields))
-        {
-            if (fields.TryGetValue(name, out var f)) return f;
-        }
-        else
-        {
-            fields = [];
-            _cacheFields[type] = fields;
-        }
-
-        var field = AccessTools.Field(type, name);
-        fields[name] = field;
-
-        return field;
+        var fields = _cacheFields.GetOrAdd(type, _ => []);
+        return fields.GetOrAdd(name,
+                _ => new Lazy<FieldInfo>(() => AccessTools.Field(type, name),
+                    LazyThreadSafetyMode.ExecutionAndPublication))
+            .Value;
     }
 
     /// <summary>
@@ -651,12 +867,13 @@ public static class Loader
     /// </summary>
     /// <param name="type">类型</param>
     /// <param name="jsonData">JSON数据</param>
+    /// <param name="mod">模组</param>
     /// <returns>对象</returns>
-    private static object FromJson(Type type, JsonData jsonData)
+    private static object FromJson(Type type, JsonData jsonData, ModData? mod)
     {
         var obj = Activator.CreateInstance(type);
         JsonUtility.FromJsonOverwrite(jsonData.ToJson(), obj);
-        FixData(obj, jsonData);
+        FixData(obj, jsonData, mod);
         return obj;
     }
 
@@ -664,16 +881,17 @@ public static class Loader
     /// JSON反序列化
     /// </summary>
     /// <param name="json">JSON字符串</param>
+    /// <param name="mod">模组</param>
     /// <typeparam name="T">类型</typeparam>
     /// <returns>对象</returns>
-    public static T FromJson<T>(string json)
+    public static T FromJson<T>(string json, ModData? mod)
     {
         var type = typeof(T);
         var obj = type.IsSubclassOf(typeof(ScriptableObject))
             ? ScriptableObject.CreateInstance(type)
             : Activator.CreateInstance(type);
         JsonUtility.FromJsonOverwrite(json, obj);
-        FixData(obj, JsonMapper.ToObject(json));
+        FixData(obj, JsonMapper.ToObject(json), mod);
         return (T)obj;
     }
 
@@ -682,10 +900,11 @@ public static class Loader
     /// </summary>
     /// <param name="json">JSON字符串</param>
     /// <param name="obj">对象</param>
-    public static void FromJsonOverwrite(string json, object obj)
+    /// <param name="mod"></param>
+    public static void FromJsonOverwrite(string json, object obj, ModData? mod)
     {
         JsonUtility.FromJsonOverwrite(json, obj);
-        FixData(obj, JsonMapper.ToObject(json));
+        FixData(obj, JsonMapper.ToObject(json), mod);
     }
 
     /// <summary>
@@ -693,7 +912,7 @@ public static class Loader
     /// </summary>
     /// <param name="type">值类型</param>
     /// <returns>数据字典</returns>
-    public static IDictionary MakeDataDict(Type type)
+    public static IDictionary? MakeDataDict(Type type)
     {
         try
         {
@@ -713,7 +932,7 @@ public static class Loader
     /// <param name="type">类型</param>
     /// <param name="listType">IList泛型参数类型</param>
     /// <returns>是否实现了泛型IList</returns>
-    public static bool GetIListType(Type type, out Type listType)
+    public static bool GetIListType(Type type, out Type? listType)
     {
         foreach (var t in type.GetInterfaces())
         {
@@ -740,7 +959,7 @@ public static class Loader
         }
         else if (GetIListType(type, out var listType))
         {
-            type = listType;
+            type = listType!;
         }
 
         var assembly = type.Assembly;
@@ -760,6 +979,9 @@ public static class Loader
         return type == typeof(string) || !type.IsSerializable;
     }
 
+    /// <summary>
+    /// 修改类型
+    /// </summary>
     private enum WarpType
     {
         None,
@@ -771,26 +993,33 @@ public static class Loader
         AddReference
     }
 
-    public static void GameSourceModify(FileInfo file)
+    /// <summary>
+    /// 游戏资源修改
+    /// </summary>
+    /// <param name="obj"></param>
+    /// <param name="jsonData"></param>
+    /// <param name="mod">模组</param>
+    public static void GameSourceModify(object obj, JsonData jsonData, ModData? mod)
     {
         try
         {
-            var obj = UniqueIDScriptable.GetFromID(Path.GetFileNameWithoutExtension(file.Name));
-            if (!obj) return;
-
-            var jsonData = JsonMapper.ToObject(File.ReadAllText(file.FullName));
-
-            ModifyMatchCardTag(obj, jsonData);
-            ModifyMatchCardType(obj, jsonData);
-            ModifyObject(obj, jsonData);
+            ModifyMatchCardTag(obj, jsonData, mod);
+            ModifyMatchCardType(obj, jsonData, mod);
+            ModifyObject(obj, jsonData, mod);
         }
-        catch (Exception e)
+        catch (Exception ex)
         {
-            Plugin.Log.LogWarning(e);
+            Plugin.Log.LogWarning(ex);
         }
     }
 
-    private static void ModifyMatchCardTag(object source, JsonData jsonData)
+    /// <summary>
+    /// 修改匹配卡牌标签
+    /// </summary>
+    /// <param name="source">源对象</param>
+    /// <param name="jsonData">Json数据</param>
+    /// <param name="mod">模组</param>
+    private static void ModifyMatchCardTag(object source, JsonData jsonData, ModData? mod)
     {
         if (source is not CardData || !jsonData.ContainsKey("MatchTagWarpData")) return;
 
@@ -802,18 +1031,26 @@ public static class Loader
         for (var i = 0; i < warpData.Count; i++)
         {
             var data = warpData[i];
-            if (!data.IsString) return;
+            if (!data.IsString) continue;
 
             var tag = Database.GetData<CardTag>(data.ToString());
+            if (tag is null) continue;
+
             foreach (var card in tag.GetCards())
             {
                 if (ReferenceEquals(card, source)) continue;
-                ModifyObject(card, jsonData);
+                ModifyObject(card, jsonData, mod);
             }
         }
     }
 
-    private static void ModifyMatchCardType(object source, JsonData jsonData)
+    /// <summary>
+    /// 修改匹配卡牌类型
+    /// </summary>
+    /// <param name="source">源对象</param>
+    /// <param name="jsonData">Json数据</param>
+    /// <param name="mod">模组</param>
+    private static void ModifyMatchCardType(object source, JsonData jsonData, ModData? mod)
     {
         if (source is not CardData || !jsonData.ContainsKey("MatchTypeWarpData")) return;
 
@@ -831,11 +1068,17 @@ public static class Loader
         foreach (var card in type.GetCards())
         {
             if (ReferenceEquals(card, source)) continue;
-            ModifyObject(card, jsonData);
+            ModifyObject(card, jsonData, mod);
         }
     }
 
-    public static void ModifyObject(object obj, JsonData jsonData)
+    /// <summary>
+    /// 修改对象
+    /// </summary>
+    /// <param name="obj">对象</param>
+    /// <param name="jsonData">Json数据</param>
+    /// <param name="mod">模组</param>
+    public static void ModifyObject(object? obj, JsonData jsonData, ModData? mod)
     {
         if (obj is null) return;
         if (!jsonData.IsObject) return;
@@ -864,7 +1107,7 @@ public static class Loader
                 }
                 else
                 {
-                    ModifyArray(obj, field.GetValue(obj), jsonField, warpType, field);
+                    ModifyArray(obj, field.GetValue(obj), jsonField, warpType, field, mod);
                 }
             }
             catch (Exception e)
@@ -874,7 +1117,17 @@ public static class Loader
         }
     }
 
-    private static void ModifyArray(object source, object obj, JsonData jsonData, WarpType warpType, FieldInfo field)
+    /// <summary>
+    /// 修改数组
+    /// </summary>
+    /// <param name="source">源对象</param>
+    /// <param name="obj">目标数组</param>
+    /// <param name="jsonData">Json数据</param>
+    /// <param name="warpType">修改类型</param>
+    /// <param name="field">字段信息</param>
+    /// <param name="mod">模组</param>
+    private static void ModifyArray(object source, object? obj, JsonData jsonData, WarpType warpType, FieldInfo field,
+        ModData? mod)
     {
         if (obj is null) return;
         if (!jsonData.IsArray) return;
@@ -900,7 +1153,7 @@ public static class Loader
                     arrNew.SetValue(arr.GetValue(i), i);
                 }
 
-                ModifyWarpDataOfArray(arrNew, elementType, jsonData, arr.Length);
+                ModifyWarpDataOfArray(arrNew, elementType, jsonData, arr.Length, mod);
                 field.SetValue(source, arrNew);
             }
             else if (warpType is WarpType.Modify)
@@ -909,7 +1162,7 @@ public static class Loader
 
                 for (var i = 0; i < jsonData.Count; i++)
                 {
-                    ModifyObject(arr.GetValue(i), jsonData[i]);
+                    ModifyObject(arr.GetValue(i), jsonData[i], mod);
                 }
             }
             else if (warpType is WarpType.Add)
@@ -924,7 +1177,7 @@ public static class Loader
 
                 for (var i = 0; i < jsonData.Count; i++)
                 {
-                    arrNew.SetValue(FromJson(elementType, jsonData[i]), i + arr.Length);
+                    arrNew.SetValue(FromJson(elementType, jsonData[i], null), i + arr.Length);
                 }
 
                 field.SetValue(source, arrNew);
@@ -940,26 +1193,26 @@ public static class Loader
 
             if (warpType is WarpType.AddReference)
             {
-                if (!elementType.IsSubclassOf(typeof(Object))) return;
+                if (!elementType!.IsSubclassOf(typeof(Object))) return;
 
-                ModifyWarpDataOfList(list, elementType, jsonData);
+                ModifyWarpDataOfList(list, elementType, jsonData, mod);
             }
             else if (warpType is WarpType.Modify)
             {
-                if (elementType.IsSubclassOf(typeof(Object))) return;
+                if (elementType!.IsSubclassOf(typeof(Object))) return;
 
                 for (var i = 0; i < jsonData.Count; i++)
                 {
-                    ModifyObject(list[i], jsonData[i]);
+                    ModifyObject(list[i], jsonData[i], mod);
                 }
             }
             else if (warpType is WarpType.Add)
             {
-                if (elementType.IsSubclassOf(typeof(Object))) return;
+                if (elementType!.IsSubclassOf(typeof(Object))) return;
 
                 for (var i = 0; i < jsonData.Count; i++)
                 {
-                    list.Add(FromJson(elementType, jsonData[i]));
+                    list.Add(FromJson(elementType, jsonData[i], null));
                 }
             }
         }
@@ -972,7 +1225,9 @@ public static class Loader
     /// <param name="elementType">元素类型</param>
     /// <param name="warpData">JSON数据</param>
     /// <param name="startIndex">起始索引</param>
-    private static void ModifyWarpDataOfArray(Array arr, Type elementType, JsonData warpData, int startIndex)
+    /// <param name="mod">模组</param>
+    private static void ModifyWarpDataOfArray(Array arr, Type elementType, JsonData warpData, int startIndex,
+        ModData? mod)
     {
         if (!warpData.IsArray) return;
 
@@ -984,7 +1239,7 @@ public static class Loader
             var data = warpData[i];
             if (!data.IsString) continue;
 
-            var unityObj = GetWarpObject(elementType, data.ToString());
+            var unityObj = GetWarpObject(elementType, data.ToString(), null);
             if (unityObj is null) continue;
 
             arr.SetValue(unityObj, i + startIndex);
@@ -997,7 +1252,8 @@ public static class Loader
     /// <param name="list">列表</param>
     /// <param name="elementType">元素类型</param>
     /// <param name="warpData">JSON数据</param>
-    private static void ModifyWarpDataOfList(IList list, Type elementType, JsonData warpData)
+    /// <param name="mod">模组</param>
+    private static void ModifyWarpDataOfList(IList list, Type elementType, JsonData warpData, ModData? mod)
     {
         if (!warpData.IsArray) return;
 
@@ -1007,7 +1263,7 @@ public static class Loader
             var data = warpData[i];
             if (!data.IsString) continue;
 
-            var unityObj = GetWarpObject(elementType, data.ToString());
+            var unityObj = GetWarpObject(elementType, data.ToString(), mod);
             if (unityObj is null) continue;
 
             list.Add(unityObj);

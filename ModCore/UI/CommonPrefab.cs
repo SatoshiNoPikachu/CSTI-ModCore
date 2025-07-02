@@ -21,7 +21,7 @@ public static class CommonPrefab
         var parent = screen.TabsParent?.parent;
         if (!parent) return;
 
-        var target = parent.Find("CloseButton");
+        var target = parent!.Find("CloseButton");
         if (!target) return;
 
         var go = Object.Instantiate(target.gameObject);
@@ -30,7 +30,7 @@ public static class CommonPrefab
         var btn = go.AddComponent<ActionButton>();
         btn.ButtonText = go.GetComponent<TextMeshProUGUI>("ButtonText");
         btn.Group = go.AddComponent<CanvasGroup>();
-        btn.ButtonObject = go.GetComponent<Button>("ButtonObject");
+        btn.ButtonObject = go.GetComponent<Button>("ButtonObject")!;
         btn.ButtonObject.onClick = new Button.ButtonClickedEvent();
 
         UIManager.RegisterPrefab(UidActionButton, btn);

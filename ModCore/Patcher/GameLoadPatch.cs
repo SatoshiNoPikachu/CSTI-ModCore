@@ -1,6 +1,7 @@
 ﻿using System;
 using HarmonyLib;
 using ModCore.Data;
+using ModCore.UI;
 
 namespace ModCore.Patcher;
 
@@ -10,13 +11,17 @@ internal static class GameLoadPatch
     [HarmonyPostfix, HarmonyPatch("LoadGameFilesData")]
     public static void LoadGameFilesData_Postfix()
     {
-        try
-        {
-            Loader.LoadAllData();
-        }
-        catch (Exception e)
-        {
-            Plugin.Log.LogError(e);
-        }
+        Loader.LoadAsync();
+    }
+
+    [HarmonyFinalizer]
+    [HarmonyPatch("LoadOptions")]
+    [HarmonyPatch("LoadMainGameData")]
+    [HarmonyPatch("LoadGameFilesData")]
+    [HarmonyPatch("ImportOldSaves")]
+    public static void LoadOptions_Finalizer(Exception? __exception)
+    {
+        if (__exception is null) return;
+        LoadingScreen.OnError();
     }
 }

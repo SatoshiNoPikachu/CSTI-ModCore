@@ -48,7 +48,7 @@ public static class UIManager
     /// </summary>
     /// <param name="uid">唯一ID</param>
     /// <returns>预制件</returns>
-    public static Object GetPrefab(string uid)
+    public static Object? GetPrefab(string uid)
     {
         return Prefabs.TryGetValue(uid, out var obj) ? obj : null;
     }
@@ -59,7 +59,7 @@ public static class UIManager
     /// <param name="uid">唯一ID</param>
     /// <typeparam name="T">派生自组件类型</typeparam>
     /// <returns>预制件</returns>
-    public static T GetPrefab<T>(string uid) where T : Component
+    public static T? GetPrefab<T>(string uid) where T : Component
     {
         return GetPrefab(uid) as T;
     }
@@ -69,7 +69,7 @@ public static class UIManager
     /// </summary>
     /// <param name="uid">唯一ID</param>
     /// <returns></returns>
-    public static GameObject GetPrefabAsGameObject(string uid)
+    public static GameObject? GetPrefabAsGameObject(string uid)
     {
         return GetPrefab(uid) switch
         {

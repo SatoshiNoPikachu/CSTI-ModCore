@@ -11,14 +11,28 @@ namespace ModCore.Services;
 public static class LocalizationService
 {
     /// <summary>
+    /// 本地化文本路径
+    /// </summary>
+    public const string LocalizationPath = "Resource";
+
+    /// <summary>
     /// 当前语言
     /// </summary>
-    public static string CurrentLanguage { get; private set; }
+    public static string CurrentLanguage { get; private set; } = null!;
 
     /// <summary>
     /// 本地化目录路径
     /// </summary>
     private static readonly List<(string, string)> Paths = [];
+
+    internal static void Init()
+    {
+        var mods = ModService.GetMods();
+        foreach (var mod in mods)
+        {
+            RegisterPath(Path.Combine(mod.RootPath, LocalizationPath), $"{mod.Namespace}_");
+        }
+    }
 
     /// <summary>
     /// 加载语言
@@ -71,7 +85,7 @@ public static class LocalizationService
     /// </summary>
     /// <param name="text">CSV文本</param>
     /// <returns>本地化字典</returns>
-    private static Dictionary<string, List<string>> Parse(string text)
+    private static Dictionary<string, List<string>>? Parse(string text)
     {
         try
         {

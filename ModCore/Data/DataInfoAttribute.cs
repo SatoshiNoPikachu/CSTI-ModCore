@@ -13,4 +13,14 @@ public class DataInfoAttribute(string name = "") : Attribute
     /// 名称
     /// </summary>
     public string Name { get; } = name;
+
+    /// <summary>
+    /// 允许回退到模组根目录加载
+    /// </summary>
+    public bool CanFallbackToRoot { get; } = true;
+
+    public DataInfoAttribute(string name, bool canFallbackToRoot) : this(name)
+    {
+        CanFallbackToRoot = canFallbackToRoot;
+    }
 }
