@@ -8,7 +8,7 @@
 
 
 
-当前版本：2.0.1
+当前版本：2.0.2
 
 By.サトシの皮卡丘
 
@@ -21,6 +21,19 @@ By.サトシの皮卡丘
 
 
 ## 更新日志
+
+### Version 2.0.2
+
+1. UI预制件的ID格式改动，原ActionButton的UID已失效。
+2. 新增实验性UI预制件LogPopup以及配套的OptionButton与OptionButtonGroup。
+3. 新增模块额外数据存储器（ExtraDataStorage），提供存储器、数据与代理和解析器，实现了卡牌和状态的额外数据功能。
+4. 新增实用工具，提供以下扩展属性或方法：
+   - GameStat.InGameValue，用于获取游戏中该状态的当前值。
+   - InGameCardBase.Storage，用于获取卡牌的额外数据存储器。
+   - InGameCardBase.GetDurabilityValue(DurabilitiesTypes)，用于根据耐久类型获取对应当前值。
+5. Loader.LoadBeforeEvent事件的触发时机调整至初始化之后。
+
+
 
 ### Version 2.0.1
 

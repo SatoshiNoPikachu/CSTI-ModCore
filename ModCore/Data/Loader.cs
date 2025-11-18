@@ -99,13 +99,14 @@ public static class Loader
 
             LoadingScreen.SetText(LoadingScreen.TextInit);
 
-            LoadBeforeEvent?.Invoke();
-
             InitDatabaseAndAutoRegisterType();
 
             await Task.Yield();
 
             if (!LoadingScreen.CheckGameLoad()) return;
+
+            LoadBeforeEvent?.Invoke();
+
             LoadingScreen.SetText(LoadingScreen.TextLoadAsset);
 
             var sw = Stopwatch.StartNew();
