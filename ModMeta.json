@@ -1,0 +1,14 @@
+{
+  "Namespace": "ModCore",
+  "Name": {
+    "En": "Mod Core",
+    "SimpCn": "模组核心"
+  },
+  "Description": {
+    "En": "Mod Core is an API framework designed to simplify mod development, providing commonly used features such as data loaders, localization, and UI.",
+	"SimpCn": "模组核心是一个旨在简化模组开发的API框架，提供了数据加载器、本地化、UI等常用功能。"
+  },
+  "Author": "Pikachu",
+  "Icon": "Icon.png",
+  "PluginGuid": ["Pikachu.CSTI.ModCore"]
+}
