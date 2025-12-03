@@ -1,7 +1,4 @@
 ﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using Object = UnityEngine.Object;
 
 namespace ModCore.Data;
 
@@ -32,7 +29,7 @@ public static class Database
     /// <returns></returns>
     public static IDictionary? GetData(Type type)
     {
-        return AllData.TryGetValue(type, out var dict) ? dict : null;
+        return AllData.GetValueOrDefault(type);
     }
 
     /// <summary>
@@ -44,8 +41,7 @@ public static class Database
     public static T? GetData<T>(string key)
     {
         var dict = GetData<T>();
-        if (dict is null) return default;
-        return dict.TryGetValue(key, out var data) ? data : default;
+        return dict is null ? default : dict.GetValueOrDefault(key);
     }
 
     /// <summary>
@@ -92,9 +88,7 @@ public static class Database
     /// <param name="dict">数据对象字典</param>
     public static void AddData(Type type, IDictionary dict)
     {
-        if (AllData.ContainsKey(type)) return;
-
-        AllData[type] = dict;
+        AllData.TryAdd(type, dict);
     }
 
     /// <summary>
@@ -104,9 +98,7 @@ public static class Database
     /// <typeparam name="T">数据类型</typeparam>
     public static void AddData<T>(Dictionary<string, T> dict)
     {
-        var type = typeof(T);
-        if (AllData.ContainsKey(type)) return;
-        AllData[type] = dict;
+        AllData.TryAdd(typeof(T), dict);
     }
 
     /// <summary>
@@ -129,7 +121,7 @@ public static class Database
             return;
         }
 
-        if (!dict.ContainsKey(key)) dict.Add(key, obj);
+        dict.TryAdd(key, obj);
     }
 
     /// <summary>

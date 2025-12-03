@@ -14,6 +14,11 @@ namespace ModCore;
 public abstract class BaseUnityPlugin<T> : BaseUnityPlugin where T : BaseUnityPlugin<T>
 {
     /// <summary>
+    /// 模组核心版本
+    /// </summary>
+    public const string ModCoreVersion = Plugin.PluginVersion;
+
+    /// <summary>
     /// 插件实例
     /// </summary>
     public static T Instance { get; private set; } = null!;

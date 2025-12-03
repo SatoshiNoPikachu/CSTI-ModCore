@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Text.RegularExpressions;
 
@@ -64,7 +63,7 @@ public static class LocalizationService
             foreach (var (key, value) in localizationDict)
             {
                 if (value.Count < 1) continue;
-                texts[$"{keyPrefix}{key}"] = regex.Replace(value[0], "\n");
+                texts[$"{keyPrefix}{key}"] = regex.Replace(value[^1], "\n");
             }
         }
     }
@@ -77,7 +76,7 @@ public static class LocalizationService
     public static void RegisterPath(string path, string keyPrefix = "")
     {
         if (!Directory.Exists(path)) return;
-        Paths.Add((path, keyPrefix ?? ""));
+        Paths.Add((path, keyPrefix));
     }
 
     /// <summary>

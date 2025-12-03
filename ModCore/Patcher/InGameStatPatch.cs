@@ -1,5 +1,4 @@
 ﻿using HarmonyLib;
-using ModCore.Games;
 using ModCore.Games.ExtraDataModule;
 
 namespace ModCore.Patcher;

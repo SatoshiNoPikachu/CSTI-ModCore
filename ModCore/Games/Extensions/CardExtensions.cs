@@ -1,16 +1,9 @@
 ﻿using ModCore.Games.ExtraDataModule;
 
-namespace ModCore.Games;
+namespace ModCore.Games.Extensions;
 
-public static class Util
+public static class CardExtensions
 {
-    public static GameManager Gm { get; internal set; } = null!;
-
-    extension(GameStat stat)
-    {
-        public float InGameValue => Gm.StatsDict[stat].CurrentValue(Gm.NotInBase);
-    }
-
     extension(InGameCardBase card)
     {
         public ExtraDataStorage Storage => ExtraDataStorage.GetOrCreateStorage(card);

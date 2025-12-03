@@ -1,7 +1,4 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using HarmonyLib;
-using ModCore.Games;
+﻿using HarmonyLib;
 using ModCore.Games.ExtraDataModule;
 
 namespace ModCore.Patcher;

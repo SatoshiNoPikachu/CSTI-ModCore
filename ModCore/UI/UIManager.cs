@@ -1,5 +1,4 @@
-﻿using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace ModCore.UI;
 
@@ -50,7 +49,7 @@ public static class UIManager
     /// <returns>预制件</returns>
     public static Object? GetPrefab(string uid)
     {
-        return Prefabs.TryGetValue(uid, out var obj) ? obj : null;
+        return Prefabs.GetValueOrDefault(uid);
     }
 
     /// <summary>

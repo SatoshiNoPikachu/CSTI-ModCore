@@ -1,5 +1,4 @@
-﻿using System.Collections;
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.SceneManagement;
 
 namespace ModCore.UI;
@@ -31,7 +30,10 @@ public class LoadingScreen : MonoBehaviour
     public static bool OnAsyncLoadingLoadScene()
     {
         if (_instance is null) return true;
-        if (!_instance._tryLoadScene) _instance._tryLoadScene = true;
+
+        AsyncLoading.IsLoading = true;
+        _instance._tryLoadScene = true;
+
         return false;
     }
 
@@ -69,6 +71,7 @@ public class LoadingScreen : MonoBehaviour
 
         loading.LoadingVisuals.SetActive(true);
         loading.TipsVersion.SetActive(true);
+        loading.InitLoadingVisuals.SetActive(false);
     }
 
     /// <summary>
@@ -110,8 +113,12 @@ public class LoadingScreen : MonoBehaviour
         {
             yield return null;
         }
-
+        
+        AsyncLoading.IsLoading = false;
+        yield return null;
+        
         AsyncLoading.Instance.LoadingVisuals.SetActive(false);
+
         _instance = null;
         Destroy(this);
     }

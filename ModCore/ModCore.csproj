@@ -9,7 +9,7 @@
         <Nullable>enable</Nullable>
         <IsPackable>false</IsPackable>
         <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
-        <TargetFramework>net48</TargetFramework>
+        <TargetFramework>netstandard2.1</TargetFramework>
     </PropertyGroup>
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">

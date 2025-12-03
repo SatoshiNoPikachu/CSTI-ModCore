@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using UnityEngine;
 
 namespace ModCore.Games.ExtraDataModule;
@@ -50,13 +49,4 @@ public static class CardExtraData
     {
         ExtraDataStorage.GetStorage(card)?.Reset();
     }
-
-    // public static T GetExtraData<T>(InGameCardBase card, string key)
-    // {
-    //     var storage = card.Storage;
-    //     
-    //     storage.Get(key)?.
-    // }
-
-    // public static T SetExtraData<T>(InGameCardBase card, string key)
 }

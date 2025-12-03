@@ -1,7 +1,5 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -67,9 +65,8 @@ public static class Loader
     public static bool RegisterType(DataInfo info)
     {
         if (IsLoaded) return false;
-        if (DataInfos.ContainsKey(info.Name)) return false;
+        if (!DataInfos.TryAdd(info.Name, info)) return false;
 
-        DataInfos[info.Name] = info;
         Plugin.Log.LogInfo($"Registered type {info.Name} ({info.Type.FullName}) in loader.");
         return true;
     }
@@ -168,7 +165,7 @@ public static class Loader
                         var name = so.name;
                         if (dict.Contains(name))
                         {
-                            Plugin.Log.LogWarning($"{type.Name} has same name {name}.");
+                            if (name != "") Plugin.Log.LogWarning($"{type.Name} has same name {name}.");
                             continue;
                         }
 
@@ -189,17 +186,22 @@ public static class Loader
             RegisterType(new DataInfo(type, string.IsNullOrWhiteSpace(attr.Name) ? type.Name : attr.Name,
                 attr.CanFallbackToRoot));
         }
+
+        RegisterAudio();
     }
 
-    /// <summary>
-    /// 异步读取文本文件
-    /// </summary>
-    /// <param name="path">文件路径</param>
-    /// <returns>文件文本</returns>
-    private static async Task<string> ReadFileTextAsync(string path)
+    private static void RegisterAudio()
     {
-        using var reader = new StreamReader(path, Encoding.UTF8);
-        return await reader.ReadToEndAsync();
+        var audios = Resources.FindObjectsOfTypeAll<AudioClip>();
+        var dict = new Dictionary<string, AudioClip>();
+
+        foreach (var audio in audios)
+        {
+            var n = audio.name;
+            if (!dict.TryAdd(n, audio)) Plugin.Log.LogWarning($"AudioClip has same name {n}.");
+        }
+
+        Database.AddData(dict);
     }
 
     /// <summary>
@@ -388,7 +390,7 @@ public static class Loader
                         try
                         {
                             // var json = File.ReadAllText(context.Path, Encoding.UTF8);
-                            var json = await ReadFileTextAsync(context.Path);
+                            var json = await File.ReadAllTextAsync(context.Path);
                             FixData(context.Obj, JsonMapper.ToObject(json), mod);
                         }
                         catch (Exception ex)
@@ -436,7 +438,7 @@ public static class Loader
                 {
                     try
                     {
-                        var jsonData = JsonMapper.ToObject(await ReadFileTextAsync(file));
+                        var jsonData = JsonMapper.ToObject(await File.ReadAllTextAsync(file));
                         await semModify.WaitAsync();
                         GameSourceModify(obj, jsonData, mod);
                     }
@@ -748,7 +750,7 @@ public static class Loader
     private static Object? GetWarpObject(Type type, string key, ModData? mod)
     {
         var unityObj = type.IsSubclassOf(typeof(UniqueIDScriptable))
-            ? UniqueIDScriptable.AllUniqueObjects.TryGetValue(key, out var u) ? u : null
+            ? UniqueIDScriptable.AllUniqueObjects.GetValueOrDefault(key)
             : Database.GetData(type, key, mod) as Object;
         if (!unityObj) return null;
 
@@ -1092,7 +1094,7 @@ public static class Loader
 
             var jsonField = jsonData[key];
             if (!jsonField.IsObject && !jsonField.IsArray) continue;
-            var fieldName = key.Substring(0, key.Length - 8);
+            var fieldName = key[..^8];
 
             try
             {

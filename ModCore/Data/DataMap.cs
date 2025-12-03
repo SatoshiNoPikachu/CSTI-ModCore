@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 
 namespace ModCore.Data;
 
@@ -13,7 +12,7 @@ public static class DataMap
     {
         var cards = Database.GetData<CardData>()?.Values;
         if (cards is null) return;
-        
+
         foreach (var card in cards)
         {
             MapCardTags(card);

@@ -1,5 +1,4 @@
-﻿using System.Collections.Generic;
-using ModCore.Games.ExtraDataModule.Parsers;
+﻿using ModCore.Games.ExtraDataModule.Parsers;
 
 namespace ModCore.Games.ExtraDataModule;
 
@@ -33,12 +32,9 @@ public class ExtraDataStorage
     /// </summary>
     public int Count => _data.Count;
 
-    /// <summary>
-    /// 自动注册存储器。
-    /// </summary>
-    static ExtraDataStorage()
+    internal static void ClearStorage()
     {
-        ExtraDataStorageController.RegisterStorageTable(Storages);
+        Storages.Clear();
     }
 
     /// <summary>
@@ -48,7 +44,7 @@ public class ExtraDataStorage
     /// <returns>存储器，若不存在或已被销毁则返回 <c>null</c>。</returns>
     public static ExtraDataStorage? GetStorage(object obj)
     {
-        return Storages.TryGetValue(obj, out var storage) ? storage : null;
+        return Storages.GetValueOrDefault(obj);
     }
 
     /// <summary>
@@ -81,8 +77,8 @@ public class ExtraDataStorage
         var index = raw.IndexOf(':', PrefixLength);
         if (index == -1) return false;
 
-        data.Key = raw.Substring(PrefixLength, index - PrefixLength);
-        data.Value = raw.Substring(index + 1);
+        data.Key = raw[PrefixLength..index];
+        data.Value = raw[(index + 1)..];
 
         return true;
     }
@@ -160,7 +156,7 @@ public class ExtraDataStorage
     /// <returns>若数据键存在则返回所关联的数据，否则返回 <c>null</c>。</returns>
     public ExtraData? Get(string key)
     {
-        return _data.TryGetValue(key, out var data) ? data : null;
+        return _data.GetValueOrDefault(key);
     }
 
     /// <summary>

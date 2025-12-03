@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
@@ -78,6 +77,6 @@ public static class ModService
 
     public static ModData? GetMod(string ns)
     {
-        return Mods.TryGetValue(ns, out var mod) ? mod : null;
+        return Mods.GetValueOrDefault(ns);
     }
 }

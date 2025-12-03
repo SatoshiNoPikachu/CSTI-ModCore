@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Threading;
@@ -34,8 +33,7 @@ public static class TextureLoader
 
         foreach (var sprite in Resources.FindObjectsOfTypeAll<Sprite>())
         {
-            if (sprites.ContainsKey(sprite.name)) continue;
-            sprites.Add(sprite.name, sprite);
+            sprites.TryAdd(sprite.name, sprite);
         }
 
         await Task.Yield();
@@ -44,9 +42,8 @@ public static class TextureLoader
 
         var semaphore = new SemaphoreSlim(10);
         var tasks = new Dictionary<string, Task>();
-
-        var mods = ModService.GetMods();
-        foreach (var mod in mods)
+        
+        foreach (var mod in ModService.GetMods())
         {
             var path = Path.Combine(mod.RootPath, Texture2DPath);
             if (!Directory.Exists(path)) continue;
@@ -88,7 +85,8 @@ public static class TextureLoader
 
         try
         {
-            var bytes = await ReadFileAsync(path);
+            var bytes = await File.ReadAllBytesAsync(path);
+            // var bytes = await ReadFileAsync(path);
             var tex = new Texture2D(0, 0, TextureFormat.RGBA32, false)
             {
                 name = name
@@ -115,23 +113,23 @@ public static class TextureLoader
         }
     }
 
-    /// <summary>
-    /// 异步读取文件
-    /// </summary>
-    /// <param name="path">文件路径</param>
-    /// <returns>读取字节的任务</returns>
-    private static async Task<byte[]> ReadFileAsync(string path)
-    {
-        using var file = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 8192, true);
-        var buffer = new byte[file.Length];
-        var count = 0;
-        while (count < buffer.Length)
-        {
-            var read = await file.ReadAsync(buffer, count, buffer.Length - count);
-            if (read == 0) break;
-            count += read;
-        }
-
-        return buffer;
-    }
+    // /// <summary>
+    // /// 异步读取文件
+    // /// </summary>
+    // /// <param name="path">文件路径</param>
+    // /// <returns>读取字节的任务</returns>
+    // private static async Task<byte[]> ReadFileAsync(string path)
+    // {
+    //     await using var file = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 8192, true);
+    //     var buffer = new byte[file.Length];
+    //     var count = 0;
+    //     while (count < buffer.Length)
+    //     {
+    //         var read = await file.ReadAsync(buffer, count, buffer.Length - count);
+    //         if (read == 0) break;
+    //         count += read;
+    //     }
+    //
+    //     return buffer;
+    // }
 }

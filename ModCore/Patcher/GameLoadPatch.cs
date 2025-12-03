@@ -19,7 +19,7 @@ internal static class GameLoadPatch
     [HarmonyPatch("LoadMainGameData")]
     [HarmonyPatch("LoadGameFilesData")]
     [HarmonyPatch("ImportOldSaves")]
-    public static void LoadOptions_Finalizer(Exception? __exception)
+    public static void GameLoad_Finalizer(Exception? __exception)
     {
         if (__exception is null) return;
         LoadingScreen.OnError();
