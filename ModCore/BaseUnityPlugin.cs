@@ -41,7 +41,7 @@ public abstract class BaseUnityPlugin<T> : BaseUnityPlugin where T : BaseUnityPl
     /// <summary>
     /// 模组数据
     /// </summary>
-    public static ModData? ModData { get; private set; }
+    public static ModData? ModData { get; internal set; }
 
     /// <summary>
     /// 初始化插件
