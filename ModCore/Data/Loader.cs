@@ -58,6 +58,11 @@ public static class Loader
     private static ConcurrentDictionary<Type, ConcurrentDictionary<string, Lazy<FieldInfo>>> _cacheFields = [];
 
     /// <summary>
+    /// UID字典
+    /// </summary>
+    private static Dictionary<string, UniqueIDScriptable>? _uidMap;
+
+    /// <summary>
     /// 注册类型
     /// </summary>
     /// <param name="info">数据信息</param>
@@ -108,20 +113,16 @@ public static class Loader
 
             var sw = Stopwatch.StartNew();
 
-            var taskJson = LoadJsonDataAsync();
-            var taskTex = TextureLoader.LoadTexture2DAndSpriteAsync();
-            await taskTex;
+            var taskData = LoadAssetAsync();
+            await taskData;
 
-            var objMap = await taskJson;
-            LoadingScreen.SetText(LoadingScreen.TextFixData);
-            await FixDataAsync(objMap);
-
+            LoadingScreen.SetText(LoadingScreen.TextApplyModify);
             await ModifyAsync();
 
             sw.Stop();
             Plugin.Log.LogMessage($"Total loading time: {sw.ElapsedMilliseconds}ms");
 
-            LoadingScreen.SetText(LoadingScreen.TextProcessEvent);
+            LoadingScreen.SetText(LoadingScreen.TextRunScript);
 
             DataMap.Mapping();
 
@@ -231,7 +232,7 @@ public static class Loader
     /// 异步加载Json数据
     /// </summary>
     /// <returns></returns>
-    private static async Task<Dictionary<ModData, List<JsonLoadingContext>>> LoadJsonDataAsync()
+    private static async Task LoadAssetAsync()
     {
         var objMap = new Dictionary<ModData, List<JsonLoadingContext>>();
         var objContexts = objMap.SelectMany(kvp => kvp.Value);
@@ -305,6 +306,8 @@ public static class Loader
             }
         }
 
+        var taskSprite = TextureLoader.LoadTexture2DAndSpriteAsync();
+
         await Task.Run(() =>
         {
             Parallel.ForEach(objContexts, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
@@ -321,24 +324,25 @@ public static class Loader
                         Plugin.Log.LogWarning($"Loading {context.Path} failed: {ex}");
                     }
                 });
-        });
+        }).ConfigureAwait(false);
+
+        _uidMap = new Dictionary<string, UniqueIDScriptable>(UniqueIDScriptable.AllUniqueObjects);
 
         var allUidObj = GameLoad.Instance.DataBase.AllData;
-        var allUidObjDict = UniqueIDScriptable.AllUniqueObjects;
+        var uidObjs = new List<UniqueIDScriptable>();
 
         foreach (var (obj, _) in _preloadData!)
         {
             if (obj is not UniqueIDScriptable uidObj) continue;
 
             var uid = uidObj.UniqueID;
-            if (allUidObjDict.ContainsKey(uid))
+            if (!_uidMap.TryAdd(uid, uidObj))
             {
                 Plugin.Log.LogWarning($"Preload not register same uid {uid}.");
                 continue;
             }
 
-            uidObj.Init();
-            allUidObj.Add(uidObj);
+            uidObjs.Add(uidObj);
         }
 
         foreach (var (mod, contexts) in objMap)
@@ -348,77 +352,77 @@ public static class Loader
                 if (!context.Valid || context.Obj is not UniqueIDScriptable uidObj) continue;
 
                 var uid = uidObj.UniqueID;
-                if (allUidObjDict.ContainsKey(uid))
+                if (!_uidMap.TryAdd(uid, uidObj))
                 {
                     Plugin.Log.LogWarning(
                         $"{mod.Namespace} has same uid {uid} of type {uidObj.GetType().Name} from {context.Path}.");
                     continue;
                 }
 
-                uidObj.Init();
-                allUidObj.Add(uidObj);
+                uidObjs.Add(uidObj);
             }
         }
 
-        return objMap;
-    }
+        allUidObj.AddRange(uidObjs);
 
-    private static async Task FixDataAsync(Dictionary<ModData, List<JsonLoadingContext>> objMap)
-    {
+        await taskSprite;
+
         await Task.Run(() =>
         {
-            Parallel.ForEach(_preloadData!, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
+            Parallel.ForEach(_preloadData, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
                 context => FixData(context.Obj, context.JsonData, null));
         });
 
-        await Task.Run(async () =>
+        var sw = Stopwatch.StartNew();
+        var maxSemaphoreNum = Environment.ProcessorCount;
+        var semaphore = new SemaphoreSlim(maxSemaphoreNum);
+        var tcs = new TaskCompletionSource<bool>();
+        var flag = false;
+
+        foreach (var (mod, contexts) in objMap)
         {
-            var sw = Stopwatch.StartNew();
-
-            var maxSemaphoreNum = Environment.ProcessorCount;
-            var semaphore = new SemaphoreSlim(maxSemaphoreNum);
-            var tcs = new TaskCompletionSource<bool>();
-            var flag = false;
-
-            foreach (var (mod, contexts) in objMap)
+            foreach (var context in contexts.Where(context => context.Valid))
             {
-                foreach (var context in contexts.Where(context => context.Valid))
+                await semaphore.WaitAsync();
+                _ = Task.Run(async () =>
                 {
-                    await semaphore.WaitAsync();
-                    _ = Task.Run(async () =>
+                    try
                     {
-                        try
-                        {
-                            // var json = File.ReadAllText(context.Path, Encoding.UTF8);
-                            var json = await File.ReadAllTextAsync(context.Path);
-                            FixData(context.Obj, JsonMapper.ToObject(json), mod);
-                        }
-                        catch (Exception ex)
-                        {
-                            Plugin.Log.LogWarning($"{mod.Namespace} fix data failed from {context.Path}: {ex}");
-                        }
-                        finally
-                        {
-                            semaphore.Release();
-                            // ReSharper disable once AccessToModifiedClosure
-                            if (flag && semaphore.CurrentCount == maxSemaphoreNum) tcs.TrySetResult(true);
-                        }
-                    });
-                }
+                        var json = await File.ReadAllTextAsync(context.Path);
+                        FixData(context.Obj, JsonMapper.ToObject(json), mod);
+                    }
+                    catch (Exception ex)
+                    {
+                        Plugin.Log.LogWarning($"{mod.Namespace} fix data failed from {context.Path}: {ex}");
+                    }
+                    finally
+                    {
+                        semaphore.Release();
+                        // ReSharper disable once AccessToModifiedClosure
+                        if (flag && semaphore.CurrentCount == maxSemaphoreNum) tcs.TrySetResult(true);
+                    }
+                });
             }
+        }
 
-            flag = true;
+        flag = true;
 
-            if (semaphore.CurrentCount != maxSemaphoreNum)
-            {
-                await tcs.Task;
-            }
+        if (semaphore.CurrentCount != maxSemaphoreNum)
+        {
+            await tcs.Task;
+        }
 
-            tcs.TrySetResult(true);
+        tcs.TrySetResult(true);
 
-            sw.Stop();
-            Plugin.Log.LogMessage($"Fix data time: {sw.ElapsedMilliseconds}ms");
-        });
+        sw.Stop();
+        Plugin.Log.LogMessage($"Fix data time: {sw.ElapsedMilliseconds}ms");
+
+        foreach (var uidObj in uidObjs)
+        {
+            uidObj.Init();
+        }
+
+        _uidMap = UniqueIDScriptable.AllUniqueObjects;
     }
 
     private static async Task ModifyAsync()
@@ -721,41 +725,40 @@ public static class Loader
         else Plugin.Log.LogWarning("JsonData type is not supported.");
     }
 
-    // /// <summary>
-    // /// 根据数据键获取映射对象
-    // /// </summary>
-    // /// <param name="type">数据类型</param>
-    // /// <param name="key">数据键</param>
-    // /// <param name="mod">模组</param>
-    // /// <returns></returns>
-    // private static Object? GetWarpObjectFromKey(Type type, string key, ModData? mod)
-    // {
-    //     if (mod is null) return Database.GetData(type, key) as Object;
-    //
-    //     if (!ModData.HasNamespace(key))
-    //     {
-    //         return (Database.GetData(type, key) ?? Database.GetData(type, $"{mod.Namespace}:{key}")) as Object;
-    //     }
-    //
-    //     return Database.GetData(type, key) as Object;
-    // }
-
     /// <summary>
     /// 获取映射对象
     /// </summary>
     /// <param name="type">数据类型</param>
     /// <param name="key">数据键或UID</param>
     /// <param name="mod">模组</param>
-    /// <returns></returns>
-    private static Object? GetWarpObject(Type type, string key, ModData? mod)
+    /// <returns>对应数据键或UID的对象</returns>
+    private static object? GetWarpObject(Type type, string key, ModData? mod)
     {
-        var unityObj = type.IsSubclassOf(typeof(UniqueIDScriptable))
-            ? UniqueIDScriptable.AllUniqueObjects.GetValueOrDefault(key)
-            : Database.GetData(type, key, mod) as Object;
-        if (!unityObj) return null;
+        if (type.IsSubclassOf(typeof(UniqueIDScriptable)))
+        {
+            var obj = _uidMap.GetValueOrDefault(key);
+            if (type.IsInstanceOfType(obj)) return obj;
 
-        if (unityObj!.GetType() == type) return unityObj;
-        Plugin.Log.LogWarning("UID object type is different from target type.");
+            Plugin.Log.LogWarning($"Cannot assign value of type {type} to {obj.GetType()}.");
+        }
+        else
+        {
+            var index = key.IndexOf('|');
+            if (index < 0) return Database.GetData(type, key, mod);
+
+            var typeName = key[..index];
+            if (!DataInfos.TryGetValue(typeName, out var info))
+            {
+                Plugin.Log.LogWarning($"Data type {typeName} not registered.");
+                return null;
+            }
+
+            var targetType = info.Type;
+            if (type.IsAssignableFrom(targetType)) return Database.GetData(targetType, key[(index + 1)..], mod);
+            
+            Plugin.Log.LogWarning($"Cannot assign value of type {type} to {typeName}({targetType}).");
+        }
+
         return null;
     }
 
@@ -843,7 +846,7 @@ public static class Loader
     /// </summary>
     /// <param name="fieldName">字段名称</param>
     /// <param name="jsonData">Json数据</param>
-    /// <returns></returns>
+    /// <returns>数量</returns>
     private static int GetWarpDataCount(string fieldName, JsonData jsonData)
     {
         var warpName = $"{fieldName}WarpData";
@@ -903,7 +906,7 @@ public static class Loader
     /// </summary>
     /// <param name="json">JSON字符串</param>
     /// <param name="obj">对象</param>
-    /// <param name="mod"></param>
+    /// <param name="mod">模组</param>
     public static void FromJsonOverwrite(string json, object obj, ModData? mod)
     {
         JsonUtility.FromJsonOverwrite(json, obj);
@@ -999,8 +1002,8 @@ public static class Loader
     /// <summary>
     /// 游戏资源修改
     /// </summary>
-    /// <param name="obj"></param>
-    /// <param name="jsonData"></param>
+    /// <param name="obj">需修改的对象</param>
+    /// <param name="jsonData">Json数据</param>
     /// <param name="mod">模组</param>
     public static void GameSourceModify(object obj, JsonData jsonData, ModData? mod)
     {
@@ -1242,7 +1245,7 @@ public static class Loader
             var data = warpData[i];
             if (!data.IsString) continue;
 
-            var unityObj = GetWarpObject(elementType, data.ToString(), null);
+            var unityObj = GetWarpObject(elementType, data.ToString(), mod);
             if (unityObj is null) continue;
 
             arr.SetValue(unityObj, i + startIndex);

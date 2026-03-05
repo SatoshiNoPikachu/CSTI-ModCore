@@ -52,8 +52,7 @@ public static class Database
     /// <returns>数据对象</returns>
     public static object? GetData(Type type, string key)
     {
-        var dict = GetData(type);
-        return dict?[key];
+        return GetData(type)?[key];
     }
 
     /// <summary>
@@ -88,6 +87,12 @@ public static class Database
     /// <param name="dict">数据对象字典</param>
     public static void AddData(Type type, IDictionary dict)
     {
+        if (dict.GetType() != typeof(Dictionary<,>).MakeGenericType(typeof(string), type))
+        {
+            Plugin.Log.LogWarning($"Database not support {dict.GetType()}");
+            return;
+        }
+
         AllData.TryAdd(type, dict);
     }
 

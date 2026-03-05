@@ -8,7 +8,7 @@
 
 
 
-当前版本：3.0.1
+当前版本：3.0.2
 
 By.サトシの皮卡丘
 
@@ -21,6 +21,17 @@ By.サトシの皮卡丘
 
 
 ## 更新日志
+
+### Version 3.0.2
+
+1. 加载器加载过程优化：合并数据加载、纹理加载和数据修复，并通过配置等待器将部分操作转移至后台线程，提高性能。
+2. 由于加载过程变化，加载屏幕的相关文本也进行相应改动。
+3. 加载器 UniqueIDScriptable 类型加载策略优化，该类对象的 Init() 方法执行将转移到数据修复完成后，以解决过早执行该方法但数据未完全加载完成而可能出现的问题。
+4. 修复修改数组映射数据时，未传递模组数据导致命名空间解析失效的问题。
+5. Database.AddData(Type, IDictionary) 方法现在仅支持 Dictionary<string, T> 类型严格相同的数据字典。
+6. 加载器现在支持多态对象引用了，语法为：“TypeName|Namespace:ObjectName”。
+
+
 
 ### Version 3.0.1
 
@@ -54,20 +65,20 @@ By.サトシの皮卡丘
 
 ### Version 2.0.2
 
-1. UI预制件的ID格式改动，原ActionButton的UID已失效。
-2. 新增实验性UI预制件LogPopup以及配套的OptionButton与OptionButtonGroup。
+1. UI预制件的ID格式改动，原 ActionButton 的 UID 已失效。
+2. 新增实验性UI预制件 LogPopup 以及配套的 OptionButton 与 OptionButtonGroup。
 3. 新增模块额外数据存储器（ExtraDataStorage），提供存储器、数据与代理和解析器，实现了卡牌和状态的额外数据功能。
 4. 新增实用工具，提供以下扩展属性或方法：
    - GameStat.InGameValue，用于获取游戏中该状态的当前值。
    - InGameCardBase.Storage，用于获取卡牌的额外数据存储器。
    - InGameCardBase.GetDurabilityValue(DurabilitiesTypes)，用于根据耐久类型获取对应当前值。
-5. Loader.LoadBeforeEvent事件的触发时机调整至初始化之后。
+5. Loader.LoadBeforeEvent 事件的触发时机调整至初始化之后。
 
 
 
 ### Version 2.0.1
 
-Database类根据命名空间与数据键获取数据的方法逻辑与返回值类型修改，并且新增了对应的泛型版本。
+Database 类根据命名空间与数据键获取数据的方法逻辑与返回值类型修改，并且新增了对应的泛型版本。
 
 
 
@@ -75,44 +86,44 @@ Database类根据命名空间与数据键获取数据的方法逻辑与返回值
 
 1. 本次更新为不兼容更新，所有直接依赖的旧版本插件类型模组都需要更新才能正常工作。
 2. 新增加载屏幕，用于在游戏启动时提供画面、进度以及错误提示。
-3. 新增ModData类，用于描述模组的信息，包含命名空间和根目录属性。
-4. 新增ModService类，用于模组信息的管理与提供服务（仅支持ModMeta.json格式），支持多路径加载（用于支持Steam创意工坊）。
+3. 新增 ModData 类，用于描述模组的信息，包含命名空间和根目录属性。
+4. 新增 ModService 类，用于模组信息的管理与提供服务（仅支持 ModMeta.json 格式），支持多路径加载（用于支持 Steam 创意工坊）。
 5. 对加载器进行大幅修改：
    - 现在加载过程支持利用多线程提高加载速度；
-   - 自动注册游戏程序集中所有派生自ScriptableObject的类型，这意味着现在将支持自动加载这些类型的数据；
-   - 将根据模组信息进行加载，不再支持旧数据组织格式，数据键与Unity对象名称（name字段）将带有命名空间并支持检索；
-   - 现在支持自动加载GameSourceModify数据；
-   - 新增支持通过类型注册名以及数据键检索对象进行修改的DataObjectModify数据（文件内容格式仍旧是GameSourceModify）。
-6. 与UnityAPI相关的扩展方法现已分离出独立类，这意味着使用这些方法的插件需重新编译。
-7. 新增特性模组命名空间（ModNamespaceAttribute），BaseUnityPlugin泛型基类新增模组命名空间、模组数据属性，将特性应用在派生类上时，这些属性将自动根据该特性赋值。
-8. 数据信息类新增属性允许回退到模组根目录加载（CanFallbackToRoot）以及相关构造方法，用于标记在模组Data目录下不存在对应数据文件夹时，加载器是否会回退到根目录尝试加载。
+   - 自动注册游戏程序集中所有派生自 ScriptableObject 的类型，这意味着现在将支持自动加载这些类型的数据；
+   - 将根据模组信息进行加载，不再支持旧数据组织格式，数据键与 Unity 对象名称（name 字段）将带有命名空间并支持检索；
+   - 现在支持自动加载 GameSourceModify 数据；
+   - 新增支持通过类型注册名以及数据键检索对象进行修改的 DataObjectModify 数据（文件内容格式仍旧是 GameSourceModify）。
+6. 与 UnityAPI 相关的扩展方法现已分离出独立类，这意味着使用这些方法的插件需重新编译。
+7. 新增特性模组命名空间（ModNamespaceAttribute），BaseUnityPlugin 泛型基类新增模组命名空间、模组数据属性，将特性应用在派生类上时，这些属性将自动根据该特性赋值。
+8. 数据信息类新增属性允许回退到模组根目录加载（CanFallbackToRoot）以及相关构造方法，用于标记在模组 Data 目录下不存在对应数据文件夹时，加载器是否会回退到根目录尝试加载。
 
 
 
 ### Version 1.2.0
 
-1. 加载器现在支持来自ModEditor的GameSourceModify的数据格式。
-2. 新增类DataMap，提供了通过CardTag/CardTypes类型实例获取所对应的CardData的扩展方法。
+1. 加载器现在支持来自 ModEditor 的 GameSourceModify 的数据格式。
+2. 新增类 DataMap，提供了通过 CardTag/CardTypes 类型实例获取所对应的CardData的扩展方法。
 3. 加载器现在支持递归加载子文件夹中的数据以及纹理。
 
 
 
 ### Version 1.1.3
 
-修复了Loader对数组元素为原版结构体类型的加载错误问题。
+修复了 Loader 对数组元素为原版结构体类型的加载错误问题。
 
 
 
 ### Version 1.1.2
 
-1. 修复了Loader对列表元素为原版类型的加载错误问题。
-2. 优化了Loader对数组元素为原版类型的加载性能。
+1. 修复了 Loader 对列表元素为原版类型的加载错误问题。
+2. 优化了 Loader 对数组元素为原版类型的加载性能。
 
 
 
 ### Version 1.1.1
 
-通过Loader.Preload方法加载的UniqueIDScriptable类型对象注册将延迟至FixData阶段，以解决在部分情况下GameLoad还未被实例化的问题。
+通过 Loader.Preload 方法加载的 UniqueIDScriptable 类型对象注册将延迟至 FixData 阶段，以解决在部分情况下 GameLoad 还未被实例化的问题。
 
 
 
@@ -120,4 +131,4 @@ Database类根据命名空间与数据键获取数据的方法逻辑与返回值
 
 1. 加载器新增三个数据加载方法，并且现在支持原版精灵贴图的引用，但纹理加载方法不再公开。
 2. 数据库新增添加对象方法。
-3. 修复了ActionButton预制件的点击事件未被清空的问题。
+3. 修复了 ActionButton 预制件的点击事件未被清空的问题。

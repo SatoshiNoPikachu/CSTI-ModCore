@@ -137,16 +137,16 @@ public class LoadingScreen : MonoBehaviour
         LocalizationKey = $"{KeyPrefix}LoadAsset"
     };
 
-    public static LocalizedString TextFixData => new()
+    public static LocalizedString TextApplyModify => new()
     {
-        DefaultText = "正在修复数据...",
-        LocalizationKey = $"{KeyPrefix}FixData"
+        DefaultText = "正在应用修改...",
+        LocalizationKey = $"{KeyPrefix}ApplyModify"
     };
 
-    public static LocalizedString TextProcessEvent => new()
+    public static LocalizedString TextRunScript => new()
     {
-        DefaultText = "正在处理事件...",
-        LocalizationKey = $"{KeyPrefix}ProcessEvent"
+        DefaultText = "正在执行脚本...",
+        LocalizationKey = $"{KeyPrefix}RunScript"
     };
 
     private static LocalizedString TextLoadCompleted => new()
