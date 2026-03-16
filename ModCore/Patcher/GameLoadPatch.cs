@@ -1,7 +1,6 @@
 ﻿using System;
 using HarmonyLib;
 using ModCore.Data;
-using ModCore.UI;
 
 namespace ModCore.Patcher;
 
@@ -22,6 +21,6 @@ internal static class GameLoadPatch
     public static void GameLoad_Finalizer(Exception? __exception)
     {
         if (__exception is null) return;
-        LoadingScreen.OnError();
+        Loader.LoadingScreen.OnError();
     }
 }
