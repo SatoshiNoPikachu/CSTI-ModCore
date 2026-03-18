@@ -13,5 +13,7 @@ internal static class GameManagerPatch
         Game.Create(__instance);
         
         CommonPrefab.MakePrefabsOnGame();
+        
+        Game.OnPreInitOneShot();
     }
 }

@@ -7,6 +7,8 @@ namespace ModCore.Games;
 
 public class Game : MonoBehaviour
 {
+    public static event Action? PreInitOneShotEvent;
+    
     public static event Action? DestroyEvent;
 
     public static GameManager Gm { get; private set; } = null!;
@@ -16,9 +18,15 @@ public class Game : MonoBehaviour
     public static void Create(GameManager gm)
     {
         gm.gameObject.AddComponent<Game>();
-        
+
         Gm = gm;
-        Grm = GraphicsManager.Instance;
+        Grm = gm.GameGraphics;
+    }
+
+    internal static void OnPreInitOneShot()
+    {
+        PreInitOneShotEvent.InvokeSafely();
+        PreInitOneShotEvent = null;
     }
 
     private void OnDestroy()
