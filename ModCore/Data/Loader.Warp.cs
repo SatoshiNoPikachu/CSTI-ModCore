@@ -18,6 +18,7 @@ public static partial class Loader
         if (type.IsSubclassOf(typeof(UniqueIDScriptable)))
         {
             var obj = _uidMap.GetValueOrDefault(key);
+            if (obj is null) return null;
             if (type.IsInstanceOfType(obj)) return obj;
 
             Plugin.Log.LogWarning($"Cannot assign value of type {type} to {obj.GetType()}.");
