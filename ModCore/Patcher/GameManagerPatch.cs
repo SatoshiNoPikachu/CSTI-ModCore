@@ -1,4 +1,6 @@
-﻿using HarmonyLib;
+﻿using System;
+using HarmonyLib;
+using ModCore.Data;
 using ModCore.Games;
 using ModCore.UI;
 
@@ -10,10 +12,23 @@ internal static class GameManagerPatch
     [HarmonyPrefix, HarmonyPatch("Awake"), HarmonyPriority(Priority.First)]
     public static void Awake_Prefix_First(GameManager __instance)
     {
+        if (!Loader.IsLoaded) throw new Exception();
+
         Game.Create(__instance);
-        
+
         CommonPrefab.MakePrefabsOnGame();
-        
+
         Game.OnPreInitOneShot();
+    }
+
+    [HarmonyFinalizer, HarmonyPatch("Awake"), HarmonyPriority(Priority.Last)]
+    public static Exception? Awake_Finalizer(Exception? __exception)
+    {
+        if (__exception is not null && Loader.IsLoaded)
+        {
+            Plugin.Log.LogError($"Error on GameManager.Awake: {__exception}");
+        }
+
+        return null;
     }
 }

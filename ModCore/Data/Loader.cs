@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using LitJson;
 using ModCore.Services;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using Object = UnityEngine.Object;
 
 namespace ModCore.Data;
@@ -71,6 +72,8 @@ public static partial class Loader
 
             LoadingScreen.SetText(LoadingScreen.TextInit);
 
+            var op = await PreloadGameSceneAsync();
+
             InitDatabaseAndAutoRegisterType();
 
             await Task.Yield();
@@ -97,6 +100,8 @@ public static partial class Loader
             DataMap.Mapping();
 
             LoadCompleteEvent?.Invoke();
+
+            await ActivateAndUnloadGameSceneAsync(op);
 
             _preloadData = null;
             _cacheFields = [];
@@ -359,5 +364,60 @@ public static partial class Loader
         }
 
         _preloadData!.Add((obj, JsonMapper.ToObject(json)));
+    }
+    
+    private static async Task<AsyncOperation?> PreloadGameSceneAsync()
+    {
+        var tcs = new TaskCompletionSource<AsyncOperation?>();
+        GameLoad.Instance.StartCoroutine(Coroutine(tcs));
+        return await tcs.Task;
+
+        static IEnumerator Coroutine(TaskCompletionSource<AsyncOperation?> tcs)
+        {
+            var op = SceneManager.LoadSceneAsync(GameLoad.Instance.GameSceneIndex, LoadSceneMode.Additive);
+            if (op is null)
+            {
+                Plugin.Log.LogWarning("Failed to load game scene.");
+                tcs.TrySetResult(null);
+                yield break;
+            }
+
+            op.allowSceneActivation = false;
+
+            while (op.progress < 0.9f)
+            {
+                yield return null;
+            }
+
+            tcs.TrySetResult(op);
+        }
+    }
+
+    private static async Task ActivateAndUnloadGameSceneAsync(AsyncOperation? op)
+    {
+        if (op is null) return;
+
+        var tcs = new TaskCompletionSource<bool>();
+        GameLoad.Instance.StartCoroutine(Coroutine(op, tcs));
+        await tcs.Task;
+        return;
+
+        static IEnumerator Coroutine(AsyncOperation op, TaskCompletionSource<bool> tcs)
+        {
+            var gl = GameLoad.Instance;
+            var sceneIndex = gl.GameSceneIndex;
+
+            gl.CurrentGameDataIndex = -1;
+            op.allowSceneActivation = true;
+
+            while (!op.isDone)
+            {
+                yield return null;
+            }
+
+            SceneManager.UnloadSceneAsync(sceneIndex);
+
+            tcs.TrySetResult(true);
+        }
     }
 }
