@@ -89,12 +89,14 @@ public class ExtraData(string data)
     /// 创建额外数据对象及代理。
     /// </summary>
     /// <param name="value">数据值。</param>
-    /// <param name="parser">数据解析器。</param>
+    /// <param name="parser">数据解析器，若为 <c>null</c> 则会尝试从 <see cref="DefaultParsers"/> 获取。</param>
     /// <typeparam name="T">目标数据类型。</typeparam>
     /// <returns>额外数据对象。</returns>
     /// <exception cref="InvalidOperationException">数据值转换成字符串失败。</exception>
-    public static ExtraData Create<T>(T value, IParser<T> parser)
+    public static ExtraData Create<T>(T value, IParser<T>? parser = null)
     {
+        parser ??= DefaultParsers.GetParser<T>();
+        
         var str = parser.ToString(value) ?? throw new InvalidOperationException();
         var data = new ExtraData(str);
         data.Proxy = new DataProxy<T>(data, value, parser);

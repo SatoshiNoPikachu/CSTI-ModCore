@@ -138,13 +138,13 @@ public class ExtraDataStorage
     /// </summary>
     /// <param name="key">数据键</param>
     /// <param name="value">数据值。</param>
-    /// <param name="parser">数据解析器。</param>
+    /// <param name="parser">数据解析器，若为 <c>null</c> 则会尝试从 <see cref="DefaultParsers"/> 获取。</param>
     /// <typeparam name="T">数据类型。</typeparam>
     /// <returns>是否成功添加数据。</returns>
-    public bool TryAdd<T>(string key, T value, IParser<T> parser)
+    public bool TryAdd<T>(string key, T value, IParser<T>? parser = null)
     {
         if (_data.ContainsKey(key)) return false;
-
+        
         _data[key] = ExtraData.Create(value, parser);
         return true;
     }
@@ -200,8 +200,6 @@ public class ExtraDataStorage
     /// <returns>是否成功设置。</returns>
     public bool Set<T>(string key, T value, IParser<T>? parser = null)
     {
-        parser ??= DefaultParsers.GetParser<T>();
-
         if (_data.TryGetValue(key, out var data))
         {
             return data.SetProxy(value, parser) is not null;
