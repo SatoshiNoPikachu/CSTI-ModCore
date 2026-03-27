@@ -9,12 +9,12 @@ internal static class InGameStatPatch
     [HarmonyPrefix, HarmonyPatch("Load")]
     public static void Load_Prefix(InGameStat __instance, StatSaveData _Data)
     {
-        StatExtraDataStorage.OnStatLoad(__instance, _Data);
+        StatExtraData.OnStatLoad(__instance, _Data);
     }
 
     [HarmonyPostfix, HarmonyPatch("Save")]
     public static void Save_Postfix(InGameStat __instance, StatSaveData __result)
     {
-        StatExtraDataStorage.OnStatSave(__instance, __result);
+        StatExtraData.OnStatSave(__instance, __result);
     }
 }

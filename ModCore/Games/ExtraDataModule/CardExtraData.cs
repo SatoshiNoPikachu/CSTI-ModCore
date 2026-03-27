@@ -4,11 +4,11 @@ using UnityEngine;
 namespace ModCore.Games.ExtraDataModule;
 
 /// <summary>
-/// 卡牌额外数据存储器。
+/// 卡牌额外数据。
 /// </summary>
-public static class CardExtraData
+internal static class CardExtraData
 {
-    internal static void OnCardInit(InGameCardBase card, List<CollectionDropsSaveData>? saves)
+    public static void OnCardInit(InGameCardBase card, List<CollectionDropsSaveData>? saves)
     {
         var storage = ExtraDataStorage.GetStorage(card);
         storage?.Reset();
@@ -28,7 +28,7 @@ public static class CardExtraData
         });
     }
 
-    internal static void OnCardSave(InGameCardBase card, CardSaveData save)
+    public static void OnCardSave(InGameCardBase card, CardSaveData save)
     {
         var storage = ExtraDataStorage.GetStorage(card);
         if (storage is null) return;
@@ -45,7 +45,7 @@ public static class CardExtraData
         }
     }
 
-    internal static void OnCardReset(InGameCardBase card)
+    public static void OnCardReset(InGameCardBase card)
     {
         ExtraDataStorage.GetStorage(card)?.Reset();
     }

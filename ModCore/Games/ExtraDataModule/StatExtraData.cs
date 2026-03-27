@@ -2,7 +2,10 @@
 
 namespace ModCore.Games.ExtraDataModule;
 
-public static class StatExtraDataStorage
+/// <summary>
+/// 状态额外数据。
+/// </summary>
+internal static class StatExtraData
 {
     public static void OnStatLoad(InGameStat stat, StatSaveData statSave)
     {
@@ -17,7 +20,7 @@ public static class StatExtraDataStorage
 
             if (!storage.TryAdd(data.Key, data.Value))
             {
-                Plugin.Log.LogWarning($"Duplicate key {data.Key} in {nameof(StatExtraDataStorage)}.");
+                Plugin.Log.LogWarning($"Duplicate key {data.Key} in {nameof(StatExtraData)}.");
             }
 
             return true;
