@@ -184,7 +184,8 @@ public class ExtraDataStorage
             return true;
         }
 
-        if (data.TrySetData(value) || data.Proxy is not DataProxy<string> proxy) return false;
+        if (data.TrySetData(value)) return true;
+        if (data.Proxy is not DataProxy<string> proxy) return false;
 
         proxy.Value = value;
         return true;
