@@ -1,4 +1,5 @@
-﻿using ModCore.Games.ExtraDataModule.Parsers;
+﻿using System;
+using ModCore.Games.ExtraDataModule.Parsers;
 
 namespace ModCore.Games.ExtraDataModule;
 
@@ -8,6 +9,11 @@ namespace ModCore.Games.ExtraDataModule;
 /// <param name="data">代理的额外数据对象。</param>
 public abstract class DataProxy(ExtraData data)
 {
+    /// <summary>
+    /// 数据类型。
+    /// </summary>
+    public abstract Type Type { get; }
+
     /// <summary>
     /// 是否有效。
     /// </summary>
@@ -24,6 +30,11 @@ public abstract class DataProxy(ExtraData data)
 public class DataProxy<T>(ExtraData data, T value, IParser<T> parser) : DataProxy(data)
 {
     /// <summary>
+    /// 数据类型。
+    /// </summary>
+    public override Type Type => typeof(T);
+
+    /// <summary>
     /// 数据值。
     /// </summary>
     public T Value = value;
@@ -38,7 +49,7 @@ public class DataProxy<T>(ExtraData data, T value, IParser<T> parser) : DataProx
     {
         return parser.TryParse(data.Data, out var v) ? new DataProxy<T>(data, v, parser) : null;
     }
-    
+
     /// <summary>
     /// 将数据值转换成字符串。
     /// </summary>

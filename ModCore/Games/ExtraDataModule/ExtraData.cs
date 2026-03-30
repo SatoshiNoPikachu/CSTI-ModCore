@@ -29,6 +29,11 @@ public class ExtraData(string data)
     public bool IsValid { get; private set; } = true;
 
     /// <summary>
+    /// 数据类型
+    /// </summary>
+    public Type Type => Proxy is null ? typeof(string) : Proxy.Type;
+
+    /// <summary>
     /// 获取代理，若无代理则会尝试创建。
     /// </summary>
     /// <param name="parser">数据解析器，若为 <c>null</c> 则会尝试从 <see cref="DefaultParsers"/> 获取。</param>
@@ -96,7 +101,7 @@ public class ExtraData(string data)
     public static ExtraData Create<T>(T value, IParser<T>? parser = null)
     {
         parser ??= DefaultParsers.GetParser<T>();
-        
+
         var str = parser.ToString(value) ?? throw new InvalidOperationException();
         var data = new ExtraData(str);
         data.Proxy = new DataProxy<T>(data, value, parser);
