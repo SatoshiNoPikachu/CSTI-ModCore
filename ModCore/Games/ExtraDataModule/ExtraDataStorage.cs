@@ -1,4 +1,5 @@
-﻿using ModCore.Games.ExtraDataModule.Parsers;
+﻿using System;
+using ModCore.Games.ExtraDataModule.Parsers;
 
 namespace ModCore.Games.ExtraDataModule;
 
@@ -63,22 +64,26 @@ public class ExtraDataStorage
     /// <param name="raw">原始数据。</param>
     /// <param name="data">提取出的数据。</param>
     /// <returns></returns>
-    public static bool TryExtractData(string raw, out (string Key, string Value) data)
+    public static bool TryExtractData(ReadOnlySpan<char> raw, out (string Key, string Value) data)
     {
         data = default;
 
-        if (raw.Length < PrefixLength) return false;
+        if (!raw.StartsWith(Prefix)) return false;
 
-        for (var i = 0; i < PrefixLength; i++)
-        {
-            if (raw[i] != Prefix[i]) return false;
-        }
+        raw = raw[PrefixLength..];
 
-        var index = raw.IndexOf(':', PrefixLength);
-        if (index == -1) return false;
+        var lenSepIndex = raw.IndexOf('|');
+        if (lenSepIndex <= 0) return false;
 
-        data.Key = raw[PrefixLength..index];
-        data.Value = raw[(index + 1)..];
+        if (!int.TryParse(raw[..lenSepIndex], out var keyLength) || keyLength < 0) return false;
+
+        raw = raw[(lenSepIndex + 1)..];
+        if (raw.Length < keyLength + 1) return false;
+
+        if (raw[keyLength] != '|') return false;
+
+        data.Key = raw[..keyLength].ToString();
+        data.Value = raw[(keyLength + 1)..].ToString();
 
         return true;
     }
@@ -117,7 +122,7 @@ public class ExtraDataStorage
     /// <param name="key">数据键。</param>
     /// <param name="value">数据值。</param>
     /// <returns>原始数据形式。</returns>
-    private static string ToRaw(string key, string value) => $"{Prefix}{key}:{value}";
+    private static string ToRaw(string key, string value) => $"{Prefix}{key.Length}|{key}|{value}";
 
     /// <summary>
     /// 尝试添加数据，如果数据键已存在则不添加。
@@ -144,7 +149,7 @@ public class ExtraDataStorage
     public bool TryAdd<T>(string key, T value, IParser<T>? parser = null)
     {
         if (_data.ContainsKey(key)) return false;
-        
+
         _data[key] = ExtraData.Create(value, parser);
         return true;
     }
