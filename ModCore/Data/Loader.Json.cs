@@ -173,7 +173,7 @@ public static partial class Loader
                         for (var i = 0; i < jsonData.Count; i++)
                         {
                             var element = list[i];
-                            FixData(list[i], jsonData[i], mod);
+                            FixData(element, jsonData[i], mod);
                             if (elementType.IsValueType) list[i] = element;
                         }
 
