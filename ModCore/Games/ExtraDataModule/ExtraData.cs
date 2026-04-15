@@ -19,7 +19,7 @@ public class ExtraData(string data)
     } = data;
 
     /// <summary>
-    /// 数据代理
+    /// 数据代理。
     /// </summary>
     public DataProxy? Proxy { get; private set; }
 
@@ -29,9 +29,9 @@ public class ExtraData(string data)
     public bool IsValid { get; private set; } = true;
 
     /// <summary>
-    /// 数据类型
+    /// 数据类型。
     /// </summary>
-    public Type Type => Proxy is null ? typeof(string) : Proxy.Type;
+    public Type? Type => Proxy?.Type;
 
     /// <summary>
     /// 获取或尝试创建指定类型的数据代理。
@@ -108,7 +108,7 @@ public class ExtraData(string data)
     {
         IsValid = false;
     }
-    
+
     // public DataProxy<T> TryCreateProxy<T>(T value, IParser<T>? parser = null)
     // {
     //     if (Proxy is not null) return (DataProxy<T>)Proxy;
