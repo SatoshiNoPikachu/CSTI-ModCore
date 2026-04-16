@@ -8,7 +8,7 @@
 
 
 
-当前版本：3.0.3
+当前版本：3.1.0
 
 By.サトシの皮卡丘
 
@@ -21,6 +21,33 @@ By.サトシの皮卡丘
 
 
 ## 更新日志
+
+### Version 3.1.0
+
+对额外数据模块进行了部分功能与 API 的重新设计。
+
+- 额外数据存储器（ExtraDataStorage）：
+  - 修改了原始数据形式的格式，现在数据键无符号限制了。
+  - 新增方法 TryGetProxy，用于尝试获取代理。
+  - 新增方法 TryGetValue，用于尝试获取值。
+  - 方法 Get(string, string) 更名为 GetOrAdd。
+  - 新增方法 GetOrAdd(string key, T def, IParser)，用于获取或添加代理。
+  - 移除方法 Set(string, string)。
+  - 移除方法 Set(string, T, IParser)。
+- 额外数据 （ExtraData）：
+  - 新增属性 Type，用于获取数据代理的目标数据类型。
+  - 方法 GetProxy(IParse) 当已存在代理且目标类型不匹配时将抛出异常。
+  - 新增方法 GetProxy(T, IParser)，用于获取或创建指定类型和值的数据代理。
+  - 方法 Create(T, IParse) 现在不再将值转换为字符串，而是直接使用值创建代理，并且访问修饰符修改为 internal。
+  - 新增方法 Create(T, out DataProxy{T}, IParser)，访问修饰符为 internal，用于创建额外数据对象及代理。
+  - 移除方法 SetProxy。
+  - 移除方法 TrySetData。
+- 数据代理（DataProxy）：
+  - 新增属性 Type，用于获取目标数据类型。
+  - Value 现在是属性，而不是字段。
+  - 方法 Create 转移至数据代理基类，访问修饰符修改为 internal。
+
+
 
 ### Version 3.0.3
 
