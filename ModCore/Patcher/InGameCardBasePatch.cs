@@ -25,9 +25,9 @@ internal static class InGameCardBasePatch
     }
 
     [HarmonyPostfix, HarmonyPatch("ResetCard")]
-    public static IEnumerator ResetCard_Postfix(IEnumerator result, InGameCardBase __instance)
+    public static IEnumerator ResetCard_Postfix(IEnumerator __result, InGameCardBase __instance)
     {
-        yield return result;
+        while (__result.MoveNext()) yield return __result.Current;
 
         CardExtraData.OnCardReset(__instance);
     }
