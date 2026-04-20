@@ -12,7 +12,11 @@ internal static class GameManagerPatch
     [HarmonyPrefix, HarmonyPatch("Awake"), HarmonyPriority(Priority.First)]
     public static void Awake_Prefix_First(GameManager __instance)
     {
-        if (!Loader.IsLoaded) throw new Exception();
+        if (!Loader.IsLoaded)
+        {
+            Loader.DestroyGameSceneObjects();
+            throw new Exception();
+        }
 
         Game.Create(__instance);
 

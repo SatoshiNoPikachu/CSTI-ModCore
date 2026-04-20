@@ -365,7 +365,7 @@ public static partial class Loader
 
         _preloadData!.Add((obj, JsonMapper.ToObject(json)));
     }
-    
+
     private static async Task<AsyncOperation?> PreloadGameSceneAsync()
     {
         var tcs = new TaskCompletionSource<AsyncOperation?>();
@@ -410,14 +410,21 @@ public static partial class Loader
             gl.CurrentGameDataIndex = -1;
             op.allowSceneActivation = true;
 
-            while (!op.isDone)
-            {
-                yield return null;
-            }
+            yield return op;
 
-            SceneManager.UnloadSceneAsync(sceneIndex);
+            yield return SceneManager.UnloadSceneAsync(sceneIndex);
 
             tcs.TrySetResult(true);
+        }
+    }
+
+    internal static void DestroyGameSceneObjects()
+    {
+        var scene = SceneManager.GetSceneByBuildIndex(GameLoad.Instance.GameSceneIndex);
+
+        foreach (var go in scene.GetRootGameObjects())
+        {
+            Object.DestroyImmediate(go);
         }
     }
 }
