@@ -10,7 +10,7 @@ internal class Plugin : BaseUnityPlugin<Plugin>
 {
     public const string PluginGuid = "Pikachu.CSTI.ModCore";
     public const string PluginName = "ModCore";
-    public const string PluginVersion = "3.1.0";
+    public const string PluginVersion = "3.1.1";
 
     private static readonly Harmony Harmony = new(PluginGuid);
 
