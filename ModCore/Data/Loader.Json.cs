@@ -9,15 +9,16 @@ namespace ModCore.Data;
 public static partial class Loader
 {
     /// <summary>
-    /// 修复数据
+    /// 修复数据。
     /// </summary>
-    /// <param name="obj">对象</param>
-    /// <param name="jsonData">Json数据</param>
-    /// <param name="mod">模组</param>
-    /// <param name="curField">当前字段信息，供序列对象使用</param>
-    /// <param name="parent">当前字段信息，供序列对象使用</param>
+    /// <param name="obj">对象。</param>
+    /// <param name="jsonData">Json数据。</param>
+    /// <param name="mod">模组。</param>
+    /// <param name="curField">当前字段信息，供序列对象使用。</param>
+    /// <param name="parent">当前字段信息，供序列对象使用。</param>
+    /// <param name="offest">偏移量，供序列对象使用。</param>
     public static void FixData(object? obj, JsonData jsonData, ModData? mod, FieldInfo? curField = null,
-        JsonData? parent = null)
+        JsonData? parent = null, int offest = 0)
     {
         if (obj is null)
         {
@@ -57,9 +58,20 @@ public static partial class Loader
                         if (jsonField.IsArray && fieldType.IsArray)
                         {
                             var elementType = fieldType.GetElementType()!;
+
                             if (elementType.IsSubclassOf(typeof(Object)))
                             {
-                                fieldValue = Array.CreateInstance(elementType, GetWarpDataCount(fieldName, jsonData));
+                                var arr = (Array)fieldValue;
+                                var length = arr.Length;
+
+                                var arrNew = Array.CreateInstance(elementType,
+                                    GetWarpDataCount(fieldName, jsonData) + length);
+
+                                if (length > 0) Array.Copy(arr, arrNew, length);
+
+                                FixData(arrNew, jsonField, mod, field, jsonData, length);
+                                field.SetValue(obj, arrNew);
+                                continue;
                             }
                         }
 
@@ -122,7 +134,7 @@ public static partial class Loader
                             return;
                         }
 
-                        WarpDataOfArray(arr, curField, elementType, parent, mod);
+                        WarpDataOfArray(arr, curField, elementType, parent, mod, offest);
                         return;
                     }
 

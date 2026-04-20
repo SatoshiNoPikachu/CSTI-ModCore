@@ -66,14 +66,16 @@ public static partial class Loader
     }
 
     /// <summary>
-    /// 数组映射数据
+    /// 数组映射数据。
     /// </summary>
-    /// <param name="arr">数组对象</param>
-    /// <param name="field">字段信息</param>
-    /// <param name="elementType">元素类型</param>
-    /// <param name="jsonData">Json数据</param>
-    /// <param name="mod">模组</param>
-    private static void WarpDataOfArray(Array arr, FieldInfo field, Type elementType, JsonData jsonData, ModData? mod)
+    /// <param name="arr">数组对象。</param>
+    /// <param name="field">字段信息。</param>
+    /// <param name="elementType">元素类型。</param>
+    /// <param name="jsonData">Json数据。</param>
+    /// <param name="mod">模组。</param>
+    /// <param name="offest">偏移量。</param>
+    private static void WarpDataOfArray(Array arr, FieldInfo field, Type elementType, JsonData jsonData, ModData? mod,
+        int offest)
     {
         var warpName = $"{field.Name}WarpData";
         if (!jsonData.ContainsKey(warpName)) return;
@@ -90,18 +92,18 @@ public static partial class Loader
             var unityObj = GetWarpObject(elementType, data.ToString(), mod);
             if (unityObj is null) continue;
 
-            arr.SetValue(unityObj, i);
+            arr.SetValue(unityObj, i + offest);
         }
     }
 
     /// <summary>
-    /// 列表映射数据
+    /// 列表映射数据。
     /// </summary>
-    /// <param name="list">实现IList接口的对象</param>
-    /// <param name="field">字段信息</param>
-    /// <param name="elementType">元素类型</param>
-    /// <param name="jsonData">Json数据</param>
-    /// <param name="mod">模组</param>
+    /// <param name="list">实现IList接口的对象。</param>
+    /// <param name="field">字段信息。</param>
+    /// <param name="elementType">元素类型。</param>
+    /// <param name="jsonData">Json数据。</param>
+    /// <param name="mod">模组。</param>
     private static void WarpDataOfIList(IList list, FieldInfo field, Type elementType, JsonData jsonData, ModData? mod)
     {
         var warpName = $"{field.Name}WarpData";
