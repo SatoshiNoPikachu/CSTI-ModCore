@@ -14,11 +14,23 @@ public static partial class Loader
     private static ConcurrentDictionary<Type, ConcurrentDictionary<string, Lazy<FieldInfo>>> _cacheFields = [];
 
     /// <summary>
+    /// IList类型缓存
+    /// </summary>
+    private static ConcurrentDictionary<Type, Type?> _cacheIListTypes = [];
+
+    /// <summary>
+    /// 游戏类型缓存
+    /// </summary>
+    private static ConcurrentDictionary<Type, bool> _cacheGameTypes = [];
+
+    /// <summary>
     /// 清除缓存
     /// </summary>
     private static void ClearCache()
     {
         _cacheFields = [];
+        _cacheIListTypes = [];
+        _cacheGameTypes = [];
     }
 
     /// <summary>
@@ -63,16 +75,18 @@ public static partial class Loader
     /// <returns>是否实现了泛型IList</returns>
     public static bool GetIListType(Type type, out Type? listType)
     {
-        foreach (var t in type.GetInterfaces())
+        listType = _cacheIListTypes.GetOrAdd(type, static t =>
         {
-            if (!t.IsConstructedGenericType || t.GetGenericTypeDefinition() != typeof(IList<>)) continue;
+            foreach (var i in t.GetInterfaces())
+            {
+                if (i.IsConstructedGenericType && i.GetGenericTypeDefinition() == typeof(IList<>))
+                    return i.GetGenericArguments()[0];
+            }
 
-            listType = t.GetGenericArguments()[0];
-            return true;
-        }
+            return null;
+        });
 
-        listType = null;
-        return false;
+        return listType is not null;
     }
 
     /// <summary>
@@ -82,17 +96,20 @@ public static partial class Loader
     /// <returns>是否是游戏类型</returns>
     public static bool IsGameType(Type type)
     {
-        if (type.IsArray)
+        return _cacheGameTypes.GetOrAdd(type, static t =>
         {
-            type = type.GetElementType()!;
-        }
-        else if (GetIListType(type, out var listType))
-        {
-            type = listType!;
-        }
+            if (t.IsArray)
+            {
+                t = t.GetElementType()!;
+            }
+            else if (GetIListType(t, out var listType))
+            {
+                t = listType!;
+            }
 
-        var assembly = type.Assembly;
-        return !assembly.IsDynamic && assembly.Location.StartsWith(BepInEx.Paths.ManagedPath);
+            var a = t.Assembly;
+            return !a.IsDynamic && a.Location.StartsWith(BepInEx.Paths.ManagedPath, StringComparison.Ordinal);
+        });
     }
 
     /// <summary>
