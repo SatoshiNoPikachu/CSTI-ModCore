@@ -1,9 +1,7 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -50,11 +48,6 @@ public static partial class Loader
     /// 预加载数据
     /// </summary>
     private static List<(object Obj, JsonData JsonData)>? _preloadData = [];
-
-    /// <summary>
-    /// 字段信息缓存
-    /// </summary>
-    private static ConcurrentDictionary<Type, ConcurrentDictionary<string, Lazy<FieldInfo>>> _cacheFields = [];
 
     /// <summary>
     /// UID字典
@@ -104,7 +97,7 @@ public static partial class Loader
             await ActivateAndUnloadGameSceneAsync(op);
 
             _preloadData = null;
-            _cacheFields = [];
+            ClearCache();
             IsLoaded = true;
 
             LoadingScreen.Loaded();
