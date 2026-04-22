@@ -8,7 +8,7 @@
 
 
 
-当前版本：3.1.2
+当前版本：3.1.3
 
 By.サトシの皮卡丘
 
@@ -21,6 +21,16 @@ By.サトシの皮卡丘
 
 
 ## 更新日志
+
+### Version 3.1.3
+
+- 加载器修复与改动：
+  - 修复修改功能（GameSourceModify 和 DataObjectModify）无法进行 CardTag 和 CardType 匹配的问题。
+  - 方法 GameSourceModify 更名为 Modify。
+  - 修改功能行为变化，现在多个匹配修改只会进行一个，且若文件指定的目标对象不满足匹配条件时，则该对象不会应用修改。
+- BaseUnityPlugin 泛型基类新增常量 ModCoreGuid。
+
+
 
 ### Version 3.1.2
 
