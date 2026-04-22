@@ -83,6 +83,7 @@ public static partial class Loader
             await taskData;
 
             LoadingScreen.SetText(LoadingScreen.TextApplyModify);
+            DataMap.Mapping();
             await ModifyAsync();
 
             sw.Stop();

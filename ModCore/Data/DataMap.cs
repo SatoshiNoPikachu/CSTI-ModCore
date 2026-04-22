@@ -10,6 +10,9 @@ public static class DataMap
 
     internal static void Mapping()
     {
+        CardTagMap.Clear();
+        CardTypeMap.Clear();
+
         var cards = Database.GetData<CardData>()?.Values;
         if (cards is null) return;
 
