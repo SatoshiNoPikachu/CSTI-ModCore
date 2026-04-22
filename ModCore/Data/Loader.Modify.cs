@@ -45,7 +45,7 @@ public static partial class Loader
                     {
                         var jsonData = JsonMapper.ToObject(await File.ReadAllTextAsync(file));
                         await semModify.WaitAsync();
-                        GameSourceModify(obj, jsonData, mod);
+                        Modify(obj, jsonData, mod);
                     }
                     catch (Exception ex)
                     {
@@ -109,17 +109,17 @@ public static partial class Loader
     }
 
     /// <summary>
-    /// 游戏资源修改
+    /// 修改
     /// </summary>
     /// <param name="obj">需修改的对象</param>
     /// <param name="jsonData">Json数据</param>
     /// <param name="mod">模组</param>
-    public static void GameSourceModify(object obj, JsonData jsonData, ModData? mod)
+    public static void Modify(object obj, JsonData jsonData, ModData? mod)
     {
         try
         {
-            ModifyMatchCardTag(obj, jsonData, mod);
-            ModifyMatchCardType(obj, jsonData, mod);
+            if (ModifyMatchCardTag(obj, jsonData, mod)) return;
+            if (ModifyMatchCardType(obj, jsonData, mod)) return;
             ModifyObject(obj, jsonData, mod);
         }
         catch (Exception ex)
@@ -134,14 +134,14 @@ public static partial class Loader
     /// <param name="source">源对象</param>
     /// <param name="jsonData">Json数据</param>
     /// <param name="mod">模组</param>
-    private static void ModifyMatchCardTag(object source, JsonData jsonData, ModData? mod)
+    private static bool ModifyMatchCardTag(object source, JsonData jsonData, ModData? mod)
     {
-        if (source is not CardData || !jsonData.ContainsKey("MatchTagWarpData")) return;
+        if (source is not CardData || !jsonData.ContainsKey("MatchTagWarpData")) return false;
 
         var warpData = jsonData["MatchTagWarpData"];
         jsonData.Remove("MatchTagWarpData");
 
-        if (!warpData.IsArray) return;
+        if (!warpData.IsArray) return false;
 
         for (var i = 0; i < warpData.Count; i++)
         {
@@ -153,10 +153,12 @@ public static partial class Loader
 
             foreach (var card in tag.GetCards())
             {
-                if (ReferenceEquals(card, source)) continue;
+                // if (ReferenceEquals(card, source)) continue;
                 ModifyObject(card, jsonData, mod);
             }
         }
+
+        return true;
     }
 
     /// <summary>
@@ -165,26 +167,28 @@ public static partial class Loader
     /// <param name="source">源对象</param>
     /// <param name="jsonData">Json数据</param>
     /// <param name="mod">模组</param>
-    private static void ModifyMatchCardType(object source, JsonData jsonData, ModData? mod)
+    private static bool ModifyMatchCardType(object source, JsonData jsonData, ModData? mod)
     {
-        if (source is not CardData || !jsonData.ContainsKey("MatchTypeWarpData")) return;
+        if (source is not CardData || !jsonData.ContainsKey("MatchTypeWarpData")) return false;
 
         var warpData = jsonData["MatchTypeWarpData"];
         jsonData.Remove("MatchTypeWarpData");
 
-        if (!warpData.IsString) return;
+        if (!warpData.IsString) return false;
 
         if (!Enum.TryParse(warpData.ToString(), out CardTypes type))
         {
             Plugin.Log.LogWarning($"Unmatched CardTypes {warpData}");
-            return;
+            return false;
         }
 
         foreach (var card in type.GetCards())
         {
-            if (ReferenceEquals(card, source)) continue;
+            // if (ReferenceEquals(card, source)) continue;
             ModifyObject(card, jsonData, mod);
         }
+
+        return true;
     }
 
     /// <summary>
