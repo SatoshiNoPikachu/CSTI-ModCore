@@ -17,7 +17,7 @@ internal class Plugin : BaseUnityPlugin<Plugin>
     protected override void OnAwake()
     {
         Harmony.PatchAll();
-        
+
         ModService.Init();
         ModData = ModService.GetMod(PluginName);
 

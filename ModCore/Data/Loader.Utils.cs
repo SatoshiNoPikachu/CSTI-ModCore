@@ -49,16 +49,36 @@ public static partial class Loader
     }
 
     /// <summary>
-    /// 生成数据字典
+    /// 生成数据字典。
     /// </summary>
-    /// <param name="type">值类型</param>
-    /// <returns>数据字典</returns>
+    /// <param name="type">值类型。</param>
+    /// <returns>数据字典。</returns>
     public static IDictionary? MakeDataDict(Type type)
     {
         try
         {
             var dictType = typeof(Dictionary<,>).MakeGenericType(typeof(string), type);
             return (IDictionary)Activator.CreateInstance(dictType);
+        }
+        catch (Exception)
+        {
+            Plugin.Log.LogWarning($"Type {type} cannot be used as a dictionary value type.");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// 生成指定容量的数据字典。
+    /// </summary>
+    /// <param name="type">值类型。</param>
+    /// <param name="capacity">容量。</param>
+    /// <returns>数据字典。</returns>
+    public static IDictionary? MakeDataDict(Type type, int capacity)
+    {
+        try
+        {
+            var dictType = typeof(Dictionary<,>).MakeGenericType(typeof(string), type);
+            return (IDictionary)Activator.CreateInstance(dictType, capacity);
         }
         catch (Exception)
         {

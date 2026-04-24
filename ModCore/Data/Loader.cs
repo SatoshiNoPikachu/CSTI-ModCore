@@ -139,8 +139,8 @@ public static partial class Loader
     /// <returns></returns>
     private static async Task LoadAssetAsync()
     {
-        var objMap = new Dictionary<ModData, List<JsonLoadingContext>>();
-        var objContexts = objMap.SelectMany(kvp => kvp.Value);
+        var mods = ModService.Mods;
+        var objMap = new Dictionary<ModData, List<JsonLoadingContext>>(mods.Count);
 
         foreach (var dataInfo in DataInfos.Values)
         {
@@ -155,7 +155,7 @@ public static partial class Loader
 
             Database.AddData(type, dict);
 
-            foreach (var mod in ModService.Mods)
+            foreach (var mod in mods)
             {
                 var dataDirPath = isUidObj
                     ? Path.Combine(mod.RootPath, DataPath, dataName)
@@ -171,10 +171,15 @@ public static partial class Loader
                     if (!Directory.Exists(dataDirPath)) continue;
                 }
 
+                var modTypedDict = mod.AllData;
+                IDictionary? modObjDict = null;
+
                 if (!objMap.TryGetValue(mod, out var list))
                 {
                     list = [];
-                    objMap.Add(mod, list);
+                    objMap[mod] = list;
+
+                    modTypedDict = mod.AllData = new Dictionary<Type, IDictionary>(DataInfos.Count);
                 }
 
                 var files = Directory.EnumerateFiles(dataDirPath, "*.json", SearchOption.AllDirectories);
@@ -200,8 +205,11 @@ public static partial class Loader
                         var obj = isSo ? ScriptableObject.CreateInstance(type) : Activator.CreateInstance(type);
                         if (isSo) ((ScriptableObject)obj).name = name;
 
-                        dict.Add(name, obj);
                         list.Add(new JsonLoadingContext(obj, filePath));
+                        dict[name] = obj;
+
+                        modObjDict ??= modTypedDict[type] = MakeDataDict(type)!;
+                        modObjDict[fileName] = obj;
                     }
                     catch (Exception ex)
                     {
@@ -215,7 +223,8 @@ public static partial class Loader
 
         await Task.Run(() =>
         {
-            Parallel.ForEach(objContexts, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
+            Parallel.ForEach(objMap.SelectMany(kvp => kvp.Value),
+                new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
                 context =>
                 {
                     try
