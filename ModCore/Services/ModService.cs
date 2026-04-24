@@ -12,7 +12,7 @@ namespace ModCore.Services;
 /// </summary>
 public static class ModService
 {
-    private static readonly Dictionary<string, ModData> Mods = [];
+    private static readonly Dictionary<string, ModData> ModMap = [];
 
     private static readonly string[] Targets = [BepInEx.Paths.PluginPath];
 
@@ -26,6 +26,11 @@ public static class ModService
     /// </summary>
     public static IEnumerable<string> ModMetaPaths => Targets.SelectMany(target =>
         Directory.EnumerateFiles(target, "ModMeta.json", SearchOption.AllDirectories));
+
+    /// <summary>
+    /// 模组数据集合
+    /// </summary>
+    public static IReadOnlyCollection<ModData> Mods => ModMap.Values;
 
     internal static void Init()
     {
@@ -54,7 +59,7 @@ public static class ModService
             : null!;
         if (string.IsNullOrWhiteSpace(ns)) return;
 
-        if (Mods.ContainsKey(ns))
+        if (ModMap.ContainsKey(ns))
         {
             Plugin.Log.LogWarning($"Same namespace {ns} is skipped.");
             return;
@@ -62,7 +67,7 @@ public static class ModService
 
         try
         {
-            Mods[ns] = new ModData(ns, Path.GetDirectoryName(path)!);
+            ModMap[ns] = new ModData(ns, Path.GetDirectoryName(path)!);
         }
         catch (Exception ex)
         {
@@ -70,13 +75,14 @@ public static class ModService
         }
     }
 
+    [Obsolete("该方法将弃用，请使用Mods属性", true)]
     public static IEnumerable<ModData> GetMods()
     {
-        return Mods.Values;
+        return ModMap.Values;
     }
 
     public static ModData? GetMod(string ns)
     {
-        return Mods.GetValueOrDefault(ns);
+        return ModMap.GetValueOrDefault(ns);
     }
 }

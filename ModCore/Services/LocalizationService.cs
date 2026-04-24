@@ -26,7 +26,7 @@ public static class LocalizationService
 
     internal static void Init()
     {
-        var mods = ModService.GetMods();
+        var mods = ModService.Mods;
         foreach (var mod in mods)
         {
             RegisterPath(Path.Combine(mod.RootPath, LocalizationPath), $"{mod.Namespace}_");

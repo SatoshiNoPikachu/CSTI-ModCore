@@ -32,7 +32,7 @@ public static partial class Loader
         var semModify = new SemaphoreSlim(1);
         var tasks = new List<Task>();
 
-        foreach (var mod in ModService.GetMods())
+        foreach (var mod in ModService.Mods)
         {
             foreach (var (file, obj) in GetModifyTargets(Path.Combine(mod.RootPath, GameSourceModifyPath), true, mod)
                          .Concat(GetModifyTargets(Path.Combine(mod.RootPath, DataObjectModifyPath), false, mod)))

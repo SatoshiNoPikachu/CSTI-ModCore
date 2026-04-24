@@ -43,7 +43,7 @@ public static class TextureLoader
         var semaphore = new SemaphoreSlim(10);
         var tasks = new Dictionary<string, Task>();
         
-        foreach (var mod in ModService.GetMods())
+        foreach (var mod in ModService.Mods)
         {
             var path = Path.Combine(mod.RootPath, Texture2DPath);
             if (!Directory.Exists(path)) continue;

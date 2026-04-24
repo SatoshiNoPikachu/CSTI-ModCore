@@ -155,7 +155,7 @@ public static partial class Loader
 
             Database.AddData(type, dict);
 
-            foreach (var mod in ModService.GetMods())
+            foreach (var mod in ModService.Mods)
             {
                 var dataDirPath = isUidObj
                     ? Path.Combine(mod.RootPath, DataPath, dataName)
