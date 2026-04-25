@@ -36,6 +36,17 @@ public class ModData(string ns, string rootPath)
     }
 
     /// <summary>
+    /// 获取数据键中的命名空间。
+    /// </summary>
+    /// <param name="key">数据键。</param>
+    /// <returns>命名空间，若不包含则返回 <c>null</c>。</returns>
+    public static string? GetNamespace(string key)
+    {
+        var index = key.IndexOfAny([':', '@']);
+        return index is -1 ? null : key[..index];
+    }
+
+    /// <summary>
     /// 是否是有效的命名空间。
     /// </summary>
     /// <param name="ns">命名空间，不允许包含':'和'@'以及'|'。</param>
