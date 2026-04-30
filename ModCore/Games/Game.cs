@@ -20,7 +20,7 @@ public class Game : MonoBehaviour
         gm.gameObject.AddComponent<Game>();
 
         Gm = gm;
-        Grm = gm.GameGraphics;
+        Grm = GraphicsManager.Instance;
     }
 
     internal static void OnPreInitOneShot()
