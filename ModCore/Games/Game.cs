@@ -9,9 +9,9 @@ public class Game : MonoBehaviour
 {
     public static event Action? DestroyEvent;
 
-    public static GameManager Gm { get; private set; } = null!;
+    public static GameManager? Gm { get; private set; }
 
-    public static GraphicsManager Grm { get; private set; } = null!;
+    public static GraphicsManager? Grm { get; private set; }
 
     public static void Create(GameManager gm)
     {
@@ -27,7 +27,7 @@ public class Game : MonoBehaviour
 
         ExtraDataStorage.ClearStorage();
 
-        Gm = null!;
-        Grm = null!;
+        Gm = null;
+        Grm = null;
     }
 }
