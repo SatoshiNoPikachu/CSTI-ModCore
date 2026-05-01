@@ -17,4 +17,50 @@ public static class UnityExtensions
     {
         public T? Val => obj ? obj : null;
     }
+
+    extension(Transform t)
+    {
+        public float LocalX
+        {
+            set
+            {
+                var p = t.localPosition;
+                p.x = value;
+                t.localPosition = p;
+            }
+        }
+
+        public float LocalY
+        {
+            set
+            {
+                var p = t.localPosition;
+                p.y = value;
+                t.localPosition = p;
+            }
+        }
+    }
+
+    extension(RectTransform rt)
+    {
+        public float Width
+        {
+            set
+            {
+                var size = rt.sizeDelta;
+                size.x = value;
+                rt.sizeDelta = size;
+            }
+        }
+
+        public float Height
+        {
+            set
+            {
+                var size = rt.sizeDelta;
+                size.y = value;
+                rt.sizeDelta = size;
+            }
+        }
+    }
 }
