@@ -1,0 +1,83 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>Library</OutputType>
+        <RootNamespace>ModCore.Games</RootNamespace>
+        <AssemblyName>ModCore.Games</AssemblyName>
+        <LangVersion>preview</LangVersion>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <Nullable>enable</Nullable>
+        <IsPackable>false</IsPackable>
+        <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+        <TargetFramework>netstandard2.1</TargetFramework>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\ModCore\ModCore.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Reference Include="0Harmony">
+            <HintPath>..\lib\0Harmony.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="Assembly-CSharp">
+            <HintPath>..\lib\Assembly-CSharp-nstrip.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="BepInEx">
+            <HintPath>..\lib\BepInEx.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="DOTween">
+            <HintPath>..\lib\DOTween.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
+
+        <!-- UnityEngine DLLs -->
+        <Reference Include="UnityEngine" HintPath="..\lib\UnityEngine.dll">
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="Unity.TextMeshPro" HintPath="..\lib\Unity.TextMeshPro.dll">
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="UnityEngine.CoreModule" HintPath="..\lib\UnityEngine.CoreModule.dll">
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="UnityEngine.AnimationModule" HintPath="..\lib\UnityEngine.AnimationModule.dll">
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="UnityEngine.AssetBundleModule" HintPath="..\lib\UnityEngine.AssetBundleModule.dll">
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="UnityEngine.AudioModule" HintPath="..\lib\UnityEngine.AudioModule.dll">
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="UnityEngine.ImageConversionModule" HintPath="..\lib\UnityEngine.ImageConversionModule.dll">
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="UnityEngine.IMGUIModule" HintPath="..\lib\UnityEngine.IMGUIModule.dll">
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="UnityEngine.InputLegacyModule" HintPath="..\lib\UnityEngine.InputLegacyModule.dll">
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="UnityEngine.InputModule" HintPath="..\lib\UnityEngine.InputModule.dll">
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="UnityEngine.JSONSerializeModule" HintPath="..\lib\UnityEngine.JSONSerializeModule.dll">
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="UnityEngine.TextRenderingModule" HintPath="..\lib\UnityEngine.TextRenderingModule.dll">
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="UnityEngine.UI" HintPath="..\lib\UnityEngine.UI.dll">
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="UnityEngine.UIModule" HintPath="..\lib\UnityEngine.UIModule.dll">
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="UnityEngine.VideoModule" HintPath="..\lib\UnityEngine.VideoModule.dll">
+            <Private>False</Private>
+        </Reference>
+    </ItemGroup>
+</Project>
