@@ -18,70 +18,70 @@
 
     <ItemGroup>
         <Reference Include="0Harmony">
-            <HintPath>lib\0Harmony.dll</HintPath>
+            <HintPath>..\lib\0Harmony.dll</HintPath>
             <Private>False</Private>
         </Reference>
         <Reference Include="Assembly-CSharp">
-            <HintPath>lib\Assembly-CSharp-nstrip.dll</HintPath>
+            <HintPath>..\lib\Assembly-CSharp-nstrip.dll</HintPath>
             <Private>False</Private>
         </Reference>
         <Reference Include="Assembly-CSharp-firstpass">
-            <HintPath>lib\Assembly-CSharp-firstpass.dll</HintPath>
+            <HintPath>..\lib\Assembly-CSharp-firstpass.dll</HintPath>
             <Private>False</Private>
         </Reference>
         <Reference Include="BepInEx">
-            <HintPath>lib\BepInEx.dll</HintPath>
+            <HintPath>..\lib\BepInEx.dll</HintPath>
             <Private>False</Private>
         </Reference>
         <Reference Include="DOTween">
-          <HintPath>lib\DOTween.dll</HintPath>
+          <HintPath>..\lib\DOTween.dll</HintPath>
           <Private>False</Private>
         </Reference>
 
         <!-- UnityEngine DLLs -->
-        <Reference Include="UnityEngine" HintPath="lib\UnityEngine.dll">
+        <Reference Include="UnityEngine" HintPath="..\lib\UnityEngine.dll">
             <Private>False</Private>
         </Reference>
-        <Reference Include="Unity.TextMeshPro" HintPath="lib\Unity.TextMeshPro.dll">
+        <Reference Include="Unity.TextMeshPro" HintPath="..\lib\Unity.TextMeshPro.dll">
             <Private>False</Private>
         </Reference>
-        <Reference Include="UnityEngine.CoreModule" HintPath="lib\UnityEngine.CoreModule.dll">
+        <Reference Include="UnityEngine.CoreModule" HintPath="..\lib\UnityEngine.CoreModule.dll">
             <Private>False</Private>
         </Reference>
-        <Reference Include="UnityEngine.AnimationModule" HintPath="lib\UnityEngine.AnimationModule.dll">
+        <Reference Include="UnityEngine.AnimationModule" HintPath="..\lib\UnityEngine.AnimationModule.dll">
             <Private>False</Private>
         </Reference>
-        <Reference Include="UnityEngine.AssetBundleModule" HintPath="lib\UnityEngine.AssetBundleModule.dll">
+        <Reference Include="UnityEngine.AssetBundleModule" HintPath="..\lib\UnityEngine.AssetBundleModule.dll">
             <Private>False</Private>
         </Reference>
-        <Reference Include="UnityEngine.AudioModule" HintPath="lib\UnityEngine.AudioModule.dll">
+        <Reference Include="UnityEngine.AudioModule" HintPath="..\lib\UnityEngine.AudioModule.dll">
             <Private>False</Private>
         </Reference>
-        <Reference Include="UnityEngine.ImageConversionModule" HintPath="lib\UnityEngine.ImageConversionModule.dll">
+        <Reference Include="UnityEngine.ImageConversionModule" HintPath="..\lib\UnityEngine.ImageConversionModule.dll">
             <Private>False</Private>
         </Reference>
-        <Reference Include="UnityEngine.IMGUIModule" HintPath="lib\UnityEngine.IMGUIModule.dll">
+        <Reference Include="UnityEngine.IMGUIModule" HintPath="..\lib\UnityEngine.IMGUIModule.dll">
             <Private>False</Private>
         </Reference>
-        <Reference Include="UnityEngine.InputLegacyModule" HintPath="lib\UnityEngine.InputLegacyModule.dll">
+        <Reference Include="UnityEngine.InputLegacyModule" HintPath="..\lib\UnityEngine.InputLegacyModule.dll">
             <Private>False</Private>
         </Reference>
-        <Reference Include="UnityEngine.InputModule" HintPath="lib\UnityEngine.InputModule.dll">
+        <Reference Include="UnityEngine.InputModule" HintPath="..\lib\UnityEngine.InputModule.dll">
             <Private>False</Private>
         </Reference>
-        <Reference Include="UnityEngine.JSONSerializeModule" HintPath="lib\UnityEngine.JSONSerializeModule.dll">
+        <Reference Include="UnityEngine.JSONSerializeModule" HintPath="..\lib\UnityEngine.JSONSerializeModule.dll">
             <Private>False</Private>
         </Reference>
-        <Reference Include="UnityEngine.TextRenderingModule" HintPath="lib\UnityEngine.TextRenderingModule.dll">
+        <Reference Include="UnityEngine.TextRenderingModule" HintPath="..\lib\UnityEngine.TextRenderingModule.dll">
             <Private>False</Private>
         </Reference>
-        <Reference Include="UnityEngine.UI" HintPath="lib\UnityEngine.UI.dll">
+        <Reference Include="UnityEngine.UI" HintPath="..\lib\UnityEngine.UI.dll">
             <Private>False</Private>
         </Reference>
-        <Reference Include="UnityEngine.UIModule" HintPath="lib\UnityEngine.UIModule.dll">
+        <Reference Include="UnityEngine.UIModule" HintPath="..\lib\UnityEngine.UIModule.dll">
             <Private>False</Private>
         </Reference>
-        <Reference Include="UnityEngine.VideoModule" HintPath="lib\UnityEngine.VideoModule.dll">
+        <Reference Include="UnityEngine.VideoModule" HintPath="..\lib\UnityEngine.VideoModule.dll">
             <Private>False</Private>
         </Reference>
     </ItemGroup>
