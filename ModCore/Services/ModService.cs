@@ -68,6 +68,7 @@ public static class ModService
         try
         {
             ModMap[ns] = new ModData(ns, Path.GetDirectoryName(path)!);
+            Plugin.Log.LogInfo($"Registered mod {ns}.");
         }
         catch (Exception ex)
         {
