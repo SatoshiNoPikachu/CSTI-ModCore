@@ -17,8 +17,9 @@ public static partial class Loader
     /// <param name="curField">当前字段信息，供序列对象使用。</param>
     /// <param name="parent">当前字段信息，供序列对象使用。</param>
     /// <param name="offest">偏移量，供序列对象使用。</param>
+    /// <param name="isModify">是否修改模式。</param>
     public static void FixData(object? obj, JsonData jsonData, ModData? mod, FieldInfo? curField = null,
-        JsonData? parent = null, int offest = 0)
+        JsonData? parent = null, int offest = 0, bool isModify = false)
     {
         if (obj is null)
         {
@@ -55,7 +56,14 @@ public static partial class Loader
                     var fieldValue = field.GetValue(obj);
                     if (fieldValue is not null && IsGameType(fieldType))
                     {
-                        if (jsonField.IsArray && fieldType.IsArray)
+                        if (!jsonField.IsArray)
+                        {
+                            FixData(fieldValue, jsonField, mod, field, jsonData, isModify: isModify);
+                            field.SetValue(obj, fieldValue);
+                            continue;
+                        }
+
+                        if (fieldType.IsArray)
                         {
                             var elementType = fieldType.GetElementType()!;
 
@@ -76,8 +84,10 @@ public static partial class Loader
                         }
 
                         FixData(fieldValue, jsonField, mod, field, jsonData);
+                        continue;
                     }
-                    else if (jsonField.IsArray)
+
+                    if (jsonField.IsArray)
                     {
                         if (fieldType.IsArray)
                         {
@@ -95,7 +105,9 @@ public static partial class Loader
                     }
                     else
                     {
-                        fieldValue = FromJson(fieldType, jsonField, mod);
+                        if (isModify && fieldValue is not null) 
+                            FromJsonOverwrite(jsonField.ToJson(), jsonData, fieldValue, mod, isModify: true);
+                        else fieldValue = FromJson(fieldType, jsonField, mod);
                     }
 
                     field.SetValue(obj, fieldValue);
@@ -242,14 +254,30 @@ public static partial class Loader
     }
 
     /// <summary>
-    /// JSON反序列化覆写对象
+    /// JSON反序列化覆写对象。
     /// </summary>
-    /// <param name="json">JSON字符串</param>
-    /// <param name="obj">对象</param>
-    /// <param name="mod">模组</param>
-    public static void FromJsonOverwrite(string json, object obj, ModData? mod)
+    /// <param name="json">JSON字符串。</param>
+    /// <param name="obj">对象。</param>
+    /// <param name="mod">模组。</param>
+    /// <param name="isModify">是否修改模式。</param>
+    public static void FromJsonOverwrite(string json, object obj, ModData? mod, bool isModify = false)
     {
         JsonUtility.FromJsonOverwrite(json, obj);
-        FixData(obj, JsonMapper.ToObject(json), mod);
+        FixData(obj, JsonMapper.ToObject(json), mod, isModify: isModify);
+    }
+
+    /// <summary>
+    /// JSON反序列化覆写对象。
+    /// </summary>
+    /// <param name="json">JSON字符串。</param>
+    /// <param name="jsonData">JSON数据。</param>
+    /// <param name="obj">对象。</param>
+    /// <param name="mod">模组。</param>
+    /// <param name="isModify">是否修改模式。</param>
+    public static void FromJsonOverwrite(string json, JsonData jsonData, object obj, ModData? mod,
+        bool isModify = false)
+    {
+        JsonUtility.FromJsonOverwrite(json, obj);
+        FixData(obj, jsonData, mod, isModify: isModify);
     }
 }

@@ -109,11 +109,11 @@ public static partial class Loader
     }
 
     /// <summary>
-    /// 修改
+    /// 修改。
     /// </summary>
-    /// <param name="obj">需修改的对象</param>
-    /// <param name="jsonData">Json数据</param>
-    /// <param name="mod">模组</param>
+    /// <param name="obj">需修改的对象。</param>
+    /// <param name="jsonData">JSON数据。</param>
+    /// <param name="mod">模组。</param>
     public static void Modify(object obj, JsonData jsonData, ModData? mod)
     {
         try
@@ -129,11 +129,11 @@ public static partial class Loader
     }
 
     /// <summary>
-    /// 修改匹配卡牌标签
+    /// 修改匹配卡牌标签。
     /// </summary>
-    /// <param name="source">源对象</param>
-    /// <param name="jsonData">Json数据</param>
-    /// <param name="mod">模组</param>
+    /// <param name="source">源对象。</param>
+    /// <param name="jsonData">JSON数据。</param>
+    /// <param name="mod">模组。</param>
     private static bool ModifyMatchCardTag(object source, JsonData jsonData, ModData? mod)
     {
         if (source is not CardData || !jsonData.ContainsKey("MatchTagWarpData")) return false;
@@ -162,11 +162,11 @@ public static partial class Loader
     }
 
     /// <summary>
-    /// 修改匹配卡牌类型
+    /// 修改匹配卡牌类型。
     /// </summary>
-    /// <param name="source">源对象</param>
-    /// <param name="jsonData">Json数据</param>
-    /// <param name="mod">模组</param>
+    /// <param name="source">源对象。</param>
+    /// <param name="jsonData">JSON数据。</param>
+    /// <param name="mod">模组。</param>
     private static bool ModifyMatchCardType(object source, JsonData jsonData, ModData? mod)
     {
         if (source is not CardData || !jsonData.ContainsKey("MatchTypeWarpData")) return false;
@@ -192,17 +192,23 @@ public static partial class Loader
     }
 
     /// <summary>
-    /// 修改对象
+    /// 修改对象。
     /// </summary>
-    /// <param name="obj">对象</param>
-    /// <param name="jsonData">Json数据</param>
-    /// <param name="mod">模组</param>
+    /// <param name="obj">对象。</param>
+    /// <param name="jsonData">JSON数据。</param>
+    /// <param name="mod">模组。</param>
     public static void ModifyObject(object? obj, JsonData jsonData, ModData? mod)
     {
         if (obj is null) return;
         if (!jsonData.IsObject) return;
 
         var type = obj.GetType();
+
+        if (jsonData.ContainsKey("$override"))
+        {
+            var data = jsonData["$override"];
+            if (data.IsObject) FromJsonOverwrite(data.ToJson(), data, obj, mod, true);
+        }
 
         foreach (var key in jsonData.Keys)
         {
@@ -223,6 +229,8 @@ public static partial class Loader
                 if (jsonField.IsObject)
                 {
                     if (warpType is not WarpType.Modify) continue;
+
+                    ModifyObject(field.GetValue(obj), jsonField, mod);
                 }
                 else
                 {
