@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -26,41 +27,29 @@ public static partial class Loader
         AddReference
     }
 
-    private static async Task ModifyAsync()
+    private static async Task StartModifyAsync()
     {
-        var semJson = new SemaphoreSlim(Environment.ProcessorCount);
-        var semModify = new SemaphoreSlim(1);
-        var tasks = new List<Task>();
+        Plugin.Log.LogMessage("Start modify");
+        var sw = Stopwatch.StartNew();
 
         foreach (var mod in ModService.Mods)
         {
             foreach (var (file, obj) in GetModifyTargets(Path.Combine(mod.RootPath, GameSourceModifyPath), true, mod)
                          .Concat(GetModifyTargets(Path.Combine(mod.RootPath, DataObjectModifyPath), false, mod)))
             {
-                await semJson.WaitAsync();
-
-                tasks.Add(Task.Run(async () =>
+                try
                 {
-                    try
-                    {
-                        var jsonData = JsonMapper.ToObject(await File.ReadAllTextAsync(file));
-                        await semModify.WaitAsync();
-                        Modify(obj, jsonData, mod);
-                    }
-                    catch (Exception ex)
-                    {
-                        Plugin.Log.LogWarning($"Modify failed from {file}: {ex}");
-                    }
-                    finally
-                    {
-                        semJson.Release();
-                        semModify.Release();
-                    }
-                }));
+                    var jsonData = JsonMapper.ToObject(await File.ReadAllTextAsync(file).ConfigureAwait(false));
+                    await ModifyAsync(obj, jsonData, mod).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    Plugin.Log.LogWarning($"Modify failed from {file}: {ex}");
+                }
             }
         }
 
-        await Task.WhenAll(tasks);
+        Plugin.Log.LogMessage($"Modify time: {sw.ElapsedMilliseconds}ms");
     }
 
     private static IEnumerable<(string FilePath, object Obj)> GetModifyTargets(string path, bool isUid, ModData mod)
@@ -109,18 +98,16 @@ public static partial class Loader
     }
 
     /// <summary>
-    /// 修改。
+    /// 异步修改。
     /// </summary>
     /// <param name="obj">需修改的对象。</param>
     /// <param name="jsonData">JSON数据。</param>
     /// <param name="mod">模组。</param>
-    public static void Modify(object obj, JsonData jsonData, ModData? mod)
+    private static async Task ModifyAsync(object obj, JsonData jsonData, ModData? mod)
     {
         try
         {
-            if (ModifyMatchCardTag(obj, jsonData, mod)) return;
-            if (ModifyMatchCardType(obj, jsonData, mod)) return;
-            ModifyObject(obj, jsonData, mod);
+            if (!await ModifyMatchAsync(obj, jsonData, mod)) ModifyObject(obj, jsonData, mod);
         }
         catch (Exception ex)
         {
@@ -129,21 +116,58 @@ public static partial class Loader
     }
 
     /// <summary>
-    /// 修改匹配卡牌标签。
+    /// 异步匹配修改。
     /// </summary>
     /// <param name="source">源对象。</param>
     /// <param name="jsonData">JSON数据。</param>
     /// <param name="mod">模组。</param>
-    private static bool ModifyMatchCardTag(object source, JsonData jsonData, ModData? mod)
+    /// <returns>是否至少匹配到一个目标。</returns>
+    private static async Task<bool> ModifyMatchAsync(object source, JsonData jsonData, ModData? mod)
     {
-        if (source is not CardData || !jsonData.ContainsKey("MatchTagWarpData")) return false;
+        if (source is not CardData) return false;
+
+        var set = new HashSet<object>();
+        MatchCardTag(set, jsonData);
+        MatchCardType(set, jsonData);
+
+        if (set.Count is 0) return false;
+
+        var sem = new SemaphoreSlim(Environment.ProcessorCount);
+        var tasks = new List<Task>(set.Count);
+
+        foreach (var obj in set)
+        {
+            await sem.WaitAsync().ConfigureAwait(false);
+
+            tasks.Add(Task.Run(() =>
+            {
+                try
+                {
+                    ModifyObject(obj, jsonData, mod);
+                }
+                finally
+                {
+                    sem.Release();
+                }
+            }));
+        }
+
+        await Task.WhenAll(tasks).ConfigureAwait(false);
+
+        return true;
+    }
+
+    private static void MatchCardTag(HashSet<object> set, JsonData jsonData)
+    {
+        if (!jsonData.ContainsKey("MatchTagWarpData")) return;
 
         var warpData = jsonData["MatchTagWarpData"];
         jsonData.Remove("MatchTagWarpData");
 
-        if (!warpData.IsArray) return false;
+        if (!warpData.IsArray) return;
 
-        for (var i = 0; i < warpData.Count; i++)
+        var count = warpData.Count;
+        for (var i = 0; i < count; i++)
         {
             var data = warpData[i];
             if (!data.IsString) continue;
@@ -151,44 +175,26 @@ public static partial class Loader
             var tag = Database.GetData<CardTag>(data.ToString());
             if (tag is null) continue;
 
-            foreach (var card in tag.GetCards())
-            {
-                // if (ReferenceEquals(card, source)) continue;
-                ModifyObject(card, jsonData, mod);
-            }
+            foreach (var card in tag.GetCards()) set.Add(card);
         }
-
-        return true;
     }
 
-    /// <summary>
-    /// 修改匹配卡牌类型。
-    /// </summary>
-    /// <param name="source">源对象。</param>
-    /// <param name="jsonData">JSON数据。</param>
-    /// <param name="mod">模组。</param>
-    private static bool ModifyMatchCardType(object source, JsonData jsonData, ModData? mod)
+    private static void MatchCardType(HashSet<object> set, JsonData jsonData)
     {
-        if (source is not CardData || !jsonData.ContainsKey("MatchTypeWarpData")) return false;
+        if (!jsonData.ContainsKey("MatchTypeWarpData")) return;
 
         var warpData = jsonData["MatchTypeWarpData"];
         jsonData.Remove("MatchTypeWarpData");
 
-        if (!warpData.IsString) return false;
+        if (!warpData.IsString) return;
 
         if (!Enum.TryParse(warpData.ToString(), out CardTypes type))
         {
             Plugin.Log.LogWarning($"Unmatched CardTypes {warpData}");
-            return false;
+            return;
         }
 
-        foreach (var card in type.GetCards())
-        {
-            // if (ReferenceEquals(card, source)) continue;
-            ModifyObject(card, jsonData, mod);
-        }
-
-        return true;
+        foreach (var card in type.GetCards()) set.Add(card);
     }
 
     /// <summary>

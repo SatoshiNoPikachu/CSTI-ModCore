@@ -84,7 +84,7 @@ public static partial class Loader
 
             LoadingScreen.SetText(LoadingScreen.TextApplyModify);
             DataMap.Mapping();
-            await ModifyAsync();
+            await StartModifyAsync();
 
             sw.Stop();
             Plugin.Log.LogMessage($"Total loading time: {sw.ElapsedMilliseconds}ms");
