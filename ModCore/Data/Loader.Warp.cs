@@ -15,32 +15,32 @@ public static partial class Loader
     /// <returns>对应数据键或UID的对象</returns>
     private static object? GetWarpObject(Type type, string key, ModData? mod)
     {
-        if (type.IsSubclassOf(typeof(UniqueIDScriptable)))
+        if (!type.IsSubclassOf(typeof(UniqueIDScriptable))) return GetWarpObjectOfKey(type, key, mod);
+
+        var obj = _uidMap.GetValueOrDefault(key);
+        if (obj is null) return null;
+        if (type.IsInstanceOfType(obj)) return obj;
+
+        Plugin.Log.LogWarning($"Cannot assign value of type {type} to {obj.GetType()}.");
+        return null;
+    }
+
+    private static object? GetWarpObjectOfKey(Type type, string key, ModData? mod)
+    {
+        var index = key.IndexOf('|');
+        if (index < 0) return Database.GetData(type, key, mod);
+
+        var typeName = key[..index];
+        if (!DataInfos.TryGetValue(typeName, out var info))
         {
-            var obj = _uidMap.GetValueOrDefault(key);
-            if (obj is null) return null;
-            if (type.IsInstanceOfType(obj)) return obj;
-
-            Plugin.Log.LogWarning($"Cannot assign value of type {type} to {obj.GetType()}.");
-        }
-        else
-        {
-            var index = key.IndexOf('|');
-            if (index < 0) return Database.GetData(type, key, mod);
-
-            var typeName = key[..index];
-            if (!DataInfos.TryGetValue(typeName, out var info))
-            {
-                Plugin.Log.LogWarning($"Data type {typeName} not registered.");
-                return null;
-            }
-
-            var targetType = info.Type;
-            if (type.IsAssignableFrom(targetType)) return Database.GetData(targetType, key[(index + 1)..], mod);
-
-            Plugin.Log.LogWarning($"Cannot assign value of type {type} to {typeName}({targetType}).");
+            Plugin.Log.LogWarning($"Data type {typeName} not registered.");
+            return null;
         }
 
+        var targetType = info.Type;
+        if (type.IsAssignableFrom(targetType)) return Database.GetData(targetType, key[(index + 1)..], mod);
+
+        Plugin.Log.LogWarning($"Cannot assign value of type {type} to {typeName}({targetType}).");
         return null;
     }
 
