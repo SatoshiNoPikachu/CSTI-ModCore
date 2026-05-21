@@ -124,11 +124,15 @@ public static partial class Loader
     /// <returns>是否至少匹配到一个目标。</returns>
     private static async Task<bool> ModifyMatchAsync(object source, JsonData jsonData, ModData? mod)
     {
-        if (source is not CardData) return false;
-
         var set = new HashSet<object>();
-        MatchCardTag(set, jsonData);
-        MatchCardType(set, jsonData);
+        
+        MatchTargets(set, jsonData, source, mod);
+
+        if (source is CardData)
+        {
+            MatchCardTag(set, jsonData);
+            MatchCardType(set, jsonData);
+        }
 
         if (set.Count is 0) return false;
 
@@ -155,6 +159,27 @@ public static partial class Loader
         await Task.WhenAll(tasks).ConfigureAwait(false);
 
         return true;
+    }
+
+    private static void MatchTargets(HashSet<object> set, JsonData jsonData, object source, ModData? mod)
+    {
+        if (!jsonData.ContainsKey("$matchTargets")) return;
+        
+        var targets = jsonData["$matchTargets"];
+        if (!targets.IsArray) return;
+
+        var type = source.GetType();
+        var count = targets.Count;
+        for (var i = 0; i < count; i++)
+        {
+            var data = targets[i];
+            if (!data.IsString) continue;
+
+            var target = Database.GetData(type, data.ToString(), mod);
+            if (target is null) continue;
+            
+            set.Add(target);
+        }
     }
 
     private static void MatchCardTag(HashSet<object> set, JsonData jsonData)
