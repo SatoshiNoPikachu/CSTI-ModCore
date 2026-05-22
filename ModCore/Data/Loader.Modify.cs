@@ -107,7 +107,45 @@ public static partial class Loader
     {
         try
         {
-            if (!await ModifyMatchAsync(obj, jsonData, mod)) ModifyObject(obj, jsonData, mod);
+            var set = new HashSet<object>();
+
+            MatchTargets(set, jsonData, obj, mod);
+            
+            if (obj is CardData)
+            {
+                MatchCardTag(set, jsonData);
+                MatchCardType(set, jsonData);
+            }
+
+            if (set.Count is 0)
+            {
+                ModifyObject(obj, jsonData, mod);
+                return;
+            }
+
+            set.Add(obj);
+            
+            var sem = new SemaphoreSlim(Environment.ProcessorCount);
+            var tasks = new List<Task>(set.Count);
+
+            foreach (var o in set)
+            {
+                await sem.WaitAsync().ConfigureAwait(false);
+
+                tasks.Add(Task.Run(() =>
+                {
+                    try
+                    {
+                        ModifyObject(o, jsonData, mod);
+                    }
+                    finally
+                    {
+                        sem.Release();
+                    }
+                }));
+            }
+
+            await Task.WhenAll(tasks).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -115,56 +153,10 @@ public static partial class Loader
         }
     }
 
-    /// <summary>
-    /// 异步匹配修改。
-    /// </summary>
-    /// <param name="source">源对象。</param>
-    /// <param name="jsonData">JSON数据。</param>
-    /// <param name="mod">模组。</param>
-    /// <returns>是否至少匹配到一个目标。</returns>
-    private static async Task<bool> ModifyMatchAsync(object source, JsonData jsonData, ModData? mod)
-    {
-        var set = new HashSet<object>();
-        
-        MatchTargets(set, jsonData, source, mod);
-
-        if (source is CardData)
-        {
-            MatchCardTag(set, jsonData);
-            MatchCardType(set, jsonData);
-        }
-
-        if (set.Count is 0) return false;
-
-        var sem = new SemaphoreSlim(Environment.ProcessorCount);
-        var tasks = new List<Task>(set.Count);
-
-        foreach (var obj in set)
-        {
-            await sem.WaitAsync().ConfigureAwait(false);
-
-            tasks.Add(Task.Run(() =>
-            {
-                try
-                {
-                    ModifyObject(obj, jsonData, mod);
-                }
-                finally
-                {
-                    sem.Release();
-                }
-            }));
-        }
-
-        await Task.WhenAll(tasks).ConfigureAwait(false);
-
-        return true;
-    }
-
     private static void MatchTargets(HashSet<object> set, JsonData jsonData, object source, ModData? mod)
     {
         if (!jsonData.ContainsKey("$matchTargets")) return;
-        
+
         var targets = jsonData["$matchTargets"];
         if (!targets.IsArray) return;
 
@@ -177,7 +169,7 @@ public static partial class Loader
 
             var target = Database.GetData(type, data.ToString(), mod);
             if (target is null) continue;
-            
+
             set.Add(target);
         }
     }
