@@ -33,6 +33,11 @@ public static partial class Loader
         {
             foreach (var fieldName in jsonData.Keys)
             {
+                if (fieldName.StartsWith("$"))
+                {
+                    continue;
+                }
+
                 if (fieldName.EndsWith("WarpData") || fieldName.EndsWith("WarpType")) continue;
 
                 var jsonField = jsonData[fieldName];
@@ -105,7 +110,7 @@ public static partial class Loader
                     }
                     else
                     {
-                        if (isModify && fieldValue is not null) 
+                        if (isModify && fieldValue is not null)
                             FromJsonOverwrite(jsonField.ToJson(), jsonData, fieldValue, mod, isModify: true);
                         else fieldValue = FromJson(fieldType, jsonField, mod);
                     }
