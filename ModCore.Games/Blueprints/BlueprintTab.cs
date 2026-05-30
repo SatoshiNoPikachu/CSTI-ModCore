@@ -107,6 +107,7 @@ public class BlueprintTab : ScriptableObject
         var newTabs = new CardTabGroup[tabs.Length + _mainTabs.Count];
         Array.Copy(tabs, newTabs, tabs.Length);
         _mainTabs.CopyTo(newTabs, tabs.Length);
+        Game.Grm.BlueprintModelsPopup.BlueprintTabs = newTabs;
     }
 
     private bool RegisterTab(bool registerMain = false)
