@@ -4,9 +4,21 @@ namespace ModCore.Data;
 
 public static class DataMap
 {
-    private static readonly Dictionary<string, List<CardData>> CardTagMap = [];
+    private static readonly Dictionary<CardTag, HashSet<CardData>> CardTagMap = [];
 
-    private static readonly Dictionary<CardTypes, List<CardData>> CardTypeMap = [];
+    private static readonly Dictionary<CardTypes, HashSet<CardData>> CardTypeMap = [];
+
+    extension(CardTag tag)
+    {
+        public IReadOnlyCollection<CardData> Cards =>
+            CardTagMap.TryGetValue(tag, out var set) ? set : Array.Empty<CardData>();
+    }
+
+    extension(CardTypes type)
+    {
+        public IReadOnlyCollection<CardData> Cards =>
+            CardTypeMap.TryGetValue(type, out var set) ? set : Array.Empty<CardData>();
+    }
 
     internal static void Mapping()
     {
@@ -23,11 +35,13 @@ public static class DataMap
         }
     }
 
+    [Obsolete("该扩展方法将弃用，请使用扩展属性Cards", true)]
     public static IEnumerable<CardData> GetCards(this CardTag tag)
     {
-        return CardTagMap.TryGetValue(tag.name, out var cards) ? cards : Array.Empty<CardData>();
+        return CardTagMap.TryGetValue(tag, out var cards) ? cards : Array.Empty<CardData>();
     }
 
+    [Obsolete("该扩展方法将弃用，请使用扩展属性Cards", true)]
     public static IEnumerable<CardData> GetCards(this CardTypes type)
     {
         return CardTypeMap.TryGetValue(type, out var cards) ? cards : Array.Empty<CardData>();
@@ -40,27 +54,15 @@ public static class DataMap
         foreach (var tag in card.CardTags)
         {
             if (tag is null) continue;
-
-            if (CardTagMap.TryGetValue(tag.name, out var list))
-            {
-                list.Add(card);
-            }
-            else
-            {
-                CardTagMap[tag.name] = [card];
-            }
+            
+            if (CardTagMap.TryGetValue(tag, out var set)) set.Add(card);
+            else CardTagMap[tag] = [card];
         }
     }
 
     private static void MapCardTypes(CardData card)
     {
-        if (CardTypeMap.TryGetValue(card.CardType, out var list))
-        {
-            list.Add(card);
-        }
-        else
-        {
-            CardTypeMap[card.CardType] = [card];
-        }
+        if (CardTypeMap.TryGetValue(card.CardType, out var set)) set.Add(card);
+        else CardTypeMap[card.CardType] = [card];
     }
 }

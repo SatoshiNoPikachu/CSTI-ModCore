@@ -192,7 +192,7 @@ public static partial class Loader
             var tag = Database.GetData<CardTag>(data.ToString());
             if (tag is null) continue;
 
-            foreach (var card in tag.GetCards()) set.Add(card);
+            foreach (var card in tag.Cards) set.Add(card);
         }
     }
 
@@ -211,7 +211,7 @@ public static partial class Loader
             return;
         }
 
-        foreach (var card in type.GetCards()) set.Add(card);
+        foreach (var card in type.Cards) set.Add(card);
     }
 
     /// <summary>
