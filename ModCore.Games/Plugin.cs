@@ -2,6 +2,7 @@
 using HarmonyLib;
 using ModCore.Data;
 using ModCore.Games.Blueprints;
+using ModCore.Games.Equip;
 
 namespace ModCore.Games;
 
@@ -30,5 +31,7 @@ internal class Plugin : BaseUnityPlugin<Plugin>
         GuideCtrl.OnLoadComplete();
 
         BlueprintTab.OnLoadComplete();
+
+        EquipTab.OnLoadComplete();
     }
 }
