@@ -19,7 +19,7 @@ public static class Database
     /// <returns>数据字典</returns>
     public static Dictionary<string, T>? GetData<T>()
     {
-        return AllData.TryGetValue(typeof(T), out var dict) ? dict as Dictionary<string, T> : null;
+        return AllData.GetValueOrDefault(typeof(T)) as Dictionary<string, T>;
     }
 
     /// <summary>
@@ -140,7 +140,7 @@ public static class Database
     {
         if (mod is null || ModData.HasNamespace(key)) return GetData(type, key);
 
-        return GetData(type, key) ?? GetData(type, $"{mod.Namespace}:{key}");
+        return GetData(type, key) ?? mod.GetData(type, key);
     }
 
     /// <summary>
@@ -154,7 +154,7 @@ public static class Database
     {
         if (mod is null || ModData.HasNamespace(key)) return GetData<T>(key);
 
-        return GetData<T>(key) ?? GetData<T>($"{mod.Namespace}:{key}");
+        return GetData<T>(key) ?? mod.GetData<T>(key);
     }
 
     // /// <summary>

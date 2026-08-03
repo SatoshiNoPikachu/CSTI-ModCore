@@ -77,4 +77,15 @@ public class ModData(string ns, string rootPath)
         var dict = GetData<T>();
         return dict is null ? default : dict.GetValueOrDefault(key);
     }
+    
+    /// <summary>
+    /// 获取数据。
+    /// </summary>
+    /// <param name="type">数据类型。</param>
+    /// <param name="key">不带命名空间的键。</param>
+    /// <returns>如果数据存在，则返回数据对象，否则返回类型默认值。</returns>
+    public object? GetData(Type type, string key)
+    {
+        return AllData.GetValueOrDefault(type)?[key];
+    }
 }
