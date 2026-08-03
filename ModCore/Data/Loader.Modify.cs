@@ -84,7 +84,7 @@ public static partial class Loader
                     continue;
                 }
 
-                var key = Path.GetFileNameWithoutExtension(file);
+                var key = Path.GetFileNameWithoutExtension(file).Replace('@', ':');
                 var obj = Database.GetData(info.Type, key, mod);
                 if (obj is null)
                 {
@@ -110,7 +110,7 @@ public static partial class Loader
             var set = new HashSet<object>();
 
             MatchTargets(set, jsonData, obj, mod);
-            
+
             if (obj is CardData)
             {
                 MatchCardTag(set, jsonData);
@@ -124,7 +124,7 @@ public static partial class Loader
             }
 
             set.Add(obj);
-            
+
             var sem = new SemaphoreSlim(Environment.ProcessorCount);
             var tasks = new List<Task>(set.Count);
 
