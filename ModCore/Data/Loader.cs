@@ -35,6 +35,11 @@ public static partial class Loader
     public static event Action? LoadCompleteEvent;
 
     /// <summary>
+    /// 加载资源事件
+    /// </summary>
+    public static event Func<Task>? LoadResourceEvent;
+
+    /// <summary>
     /// 是否加载完成
     /// </summary>
     public static bool IsLoaded { get; private set; }

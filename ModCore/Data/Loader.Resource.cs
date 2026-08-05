@@ -26,6 +26,21 @@ public static partial class Loader
     {
         await LoadTexture2DAndSpriteAsync();
         await LoadAudioClipAsync();
+
+        if (LoadResourceEvent is null) return;
+        foreach (var del in LoadResourceEvent.GetInvocationList())
+        {
+            var func = (Func<Task>)del;
+
+            try
+            {
+                await func();
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.LogError($"Error on LoadResourceEvent: {e}");
+            }
+        }
     }
 
     private static async Task LoadTexture2DAndSpriteAsync()
