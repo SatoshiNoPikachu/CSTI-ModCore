@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System.Threading.Tasks;
+using UnityEngine;
 
 // ReSharper disable once CheckNamespace
 public static class UnityExtensions
@@ -61,6 +62,18 @@ public static class UnityExtensions
                 size.y = value;
                 rt.sizeDelta = size;
             }
+        }
+    }
+
+    extension(AsyncOperation op)
+    {
+        public Task WaitAsync()
+        {
+            if (op.isDone) return Task.CompletedTask;
+
+            var tcs = new TaskCompletionSource<bool>();
+            op.completed += _ => tcs.TrySetResult(true);
+            return tcs.Task;
         }
     }
 }
