@@ -13,7 +13,7 @@
     </PropertyGroup>
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
-      <DocumentationFile></DocumentationFile>
+        <DocumentationFile></DocumentationFile>
     </PropertyGroup>
 
     <ItemGroup>
@@ -34,8 +34,8 @@
             <Private>False</Private>
         </Reference>
         <Reference Include="DOTween">
-          <HintPath>..\lib\DOTween.dll</HintPath>
-          <Private>False</Private>
+            <HintPath>..\lib\DOTween.dll</HintPath>
+            <Private>False</Private>
         </Reference>
 
         <!-- UnityEngine DLLs -->
@@ -80,6 +80,13 @@
         </Reference>
         <Reference Include="UnityEngine.UIModule" HintPath="..\lib\UnityEngine.UIModule.dll">
             <Private>False</Private>
+        </Reference>
+        <Reference Include="UnityEngine.UnityWebRequestAudioModule" HintPath="..\lib\UnityEngine.UnityWebRequestAudioModule.dll">
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="UnityEngine.UnityWebRequestModule">
+          <HintPath>..\lib\UnityEngine.UnityWebRequestModule.dll</HintPath>
+          <Private>False</Private>
         </Reference>
         <Reference Include="UnityEngine.VideoModule" HintPath="..\lib\UnityEngine.VideoModule.dll">
             <Private>False</Private>

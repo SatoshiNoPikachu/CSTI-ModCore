@@ -80,21 +80,5 @@ public static partial class Loader
             RegisterType(new DataInfo(type, string.IsNullOrWhiteSpace(attr.Name) ? type.Name : attr.Name,
                 attr.CanFallbackToRoot));
         }
-
-        RegisterAudio();
-    }
-
-    private static void RegisterAudio()
-    {
-        var audios = Resources.FindObjectsOfTypeAll<AudioClip>();
-        var dict = new Dictionary<string, AudioClip>();
-
-        foreach (var audio in audios)
-        {
-            var n = audio.name;
-            if (!dict.TryAdd(n, audio)) Plugin.Log.LogWarning($"AudioClip has same name {n}.");
-        }
-
-        Database.AddData(dict);
     }
 }

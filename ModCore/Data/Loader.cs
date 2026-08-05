@@ -219,7 +219,7 @@ public static partial class Loader
             }
         }
 
-        var taskSprite = TextureLoader.LoadTexture2DAndSpriteAsync();
+        var taskRes = LoadResources();
 
         await Task.Run(() =>
         {
@@ -279,7 +279,7 @@ public static partial class Loader
 
         allUidObj.AddRange(uidObjs);
 
-        await taskSprite;
+        await taskRes;
 
         await Task.Run(() =>
         {
