@@ -100,7 +100,7 @@ public static partial class Loader
             }
         }
 
-        await Task.WhenAll(tasks.Values);
+        await Task.WhenAll(tasks.Values).ConfigureAwait(false);
 
         sw.Stop();
         Plugin.Log.LogMessage($"Texture2D loading time: {sw.ElapsedMilliseconds}ms");
@@ -202,7 +202,7 @@ public static partial class Loader
             }
         }
 
-        await Task.WhenAll(tasks.Values);
+        await Task.WhenAll(tasks.Values).ConfigureAwait(false);
 
         sw.Stop();
         Plugin.Log.LogMessage($"AudioClip loading time: {sw.ElapsedMilliseconds}ms");
