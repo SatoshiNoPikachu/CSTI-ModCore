@@ -8,7 +8,7 @@
 
 
 
-当前版本：3.3.2
+当前版本：3.4.0
 
 By.サトシの皮卡丘
 
@@ -21,6 +21,25 @@ By.サトシの皮卡丘
 
 
 ## 更新日志
+
+### Version 3.4.0
+
+- 加载器增强：
+  - 支持加载音频文件（WAV / OGG / MP3），路径为 Resource/AudioClip。
+  - 新增事件 LoadResourceEvent，用于订阅资源加载阶段。
+  - 修改功能现在支持文件名使用命名空间分隔符 “@”。
+  - 优化了异步等待，以提高性能。
+  - 移除了 TextureLoader，现已合并入加载器。
+- ModCore.Games 新增模块 EquipEx：
+  - 新增数据类型 MC-EquipTab：
+    - 支持添加新的装备栏选项卡。
+    - 预定义对象 “ModCore:Wound”，通过 DOM 可以追加伤口标签。
+  - 修改了装备UI，以支持选项卡翻页。
+- ModData 新增 GetData 方法的非泛型版本。
+- ModData 现在支持获取所属模组的 Sprite 和 AudioClip 对象。
+- 新增 Unity 扩展方法 AsyncOperation.WaitAsync，用于异步等待操作完成。
+
+
 
 ### Version 3.3.2
 
