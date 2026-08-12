@@ -3,7 +3,7 @@ using System.Linq;
 using ModCore.Data;
 using UnityEngine;
 
-namespace ModCore.Games.Equip;
+namespace ModCore.Games.EquipEx;
 
 [Serializable]
 [DataInfo("MC-EquipTab")]

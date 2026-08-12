@@ -2,7 +2,7 @@
 using HarmonyLib;
 using ModCore.Data;
 using ModCore.Games.Blueprints;
-using ModCore.Games.Equip;
+using ModCore.Games.EquipEx;
 
 namespace ModCore.Games;
 

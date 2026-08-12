@@ -1,5 +1,5 @@
 ﻿using HarmonyLib;
-using ModCore.Games.Equip;
+using ModCore.Games.EquipEx;
 
 namespace ModCore.Games.Patcher;
 
