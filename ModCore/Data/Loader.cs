@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using LitJson;
 using ModCore.Services;
+using ModCore.Utils;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using Object = UnityEngine.Object;
@@ -38,6 +39,11 @@ public static partial class Loader
     /// 加载资源事件
     /// </summary>
     public static event Func<Task>? LoadResourceEvent;
+
+    /// <summary>
+    /// UID对象初始化事件
+    /// </summary>
+    public static event Action<UniqueIDScriptable>? UidObjInitEvent;
 
     /// <summary>
     /// 是否加载完成
@@ -339,6 +345,7 @@ public static partial class Loader
         foreach (var uidObj in uidObjs)
         {
             uidObj.Init();
+            UidObjInitEvent.InvokeSafely(uidObj);
         }
 
         _uidMap = UniqueIDScriptable.AllUniqueObjects;

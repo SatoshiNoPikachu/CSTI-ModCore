@@ -1,5 +1,7 @@
 ﻿using BepInEx;
 using HarmonyLib;
+using ModCore.Data;
+using ModCore.Games;
 using ModCore.Services;
 
 namespace ModCore;
@@ -22,5 +24,7 @@ internal class Plugin : BaseUnityPlugin<Plugin>
         ModData = ModService.GetMod(PluginName);
 
         LocalizationService.Init();
+
+        // Loader.UidObjInitEvent += DataRegister.OnUidObjInit;
     }
 }
