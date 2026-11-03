@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System.Diagnostics;
+using System.IO;
 using System.Reflection;
 using BepInEx;
 using BepInEx.Logging;
@@ -64,5 +65,11 @@ public abstract class BaseUnityPlugin<T> : BaseUnityPlugin where T : BaseUnityPl
 
     protected virtual void OnAwake()
     {
+    }
+
+    [Conditional("DEBUG")]
+    public static void LogDev(object data)
+    {
+        Log.LogWarning(data);
     }
 }
