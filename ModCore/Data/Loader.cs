@@ -80,9 +80,14 @@ public static partial class Loader
 
             InitDatabaseAndAutoRegisterType();
 
-            await Task.Yield();
+            var ready = LoadingScreen.Ready;
+            if (ready is null)
+            {
+                Plugin.Log.LogWarning("LoadingScreen is null, load not started.");
+                return;
+            }
 
-            if (!LoadingScreen.CheckGameLoad()) return;
+            if (!await ready) return;
 
             LoadBeforeEvent?.Invoke();
 

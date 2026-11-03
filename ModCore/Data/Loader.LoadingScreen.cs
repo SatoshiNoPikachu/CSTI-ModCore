@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System.Threading.Tasks;
+using UnityEngine;
 using UnityEngine.SceneManagement;
 
 namespace ModCore.Data;
@@ -10,59 +11,43 @@ public static partial class Loader
     /// </summary>
     public class LoadingScreen : MonoBehaviour
     {
-        /// <summary>
-        /// 实例
-        /// </summary>
+        internal static Task<bool>? Ready => _instance?._ready.Task;
+
         private static LoadingScreen? _instance;
 
-        /// <summary>
-        /// 游戏是否已尝试加载场景（GameLoad.Awake()是否已执行完毕）
-        /// </summary>
-        private bool _tryLoadScene;
-
-        /// <summary>
-        /// 出错
-        /// </summary>
         private bool _error;
+
+        private readonly TaskCompletionSource<bool> _ready = new();
 
         /// <summary>
         /// 当异步加载场景
         /// </summary>
         /// <returns>是否允许加载</returns>
-        public static bool OnAsyncLoadingLoadScene()
+        internal static bool OnAsyncLoadingLoadScene()
+        {
+            return _instance is null;
+        }
+
+        internal static void OnError()
+        {
+            if (_instance is null) return;
+            _instance._error = true;
+            _instance._ready.SetResult(false);
+            SetText(TextGameLoadError);
+        }
+
+        internal static bool OnReady()
         {
             if (_instance is null) return true;
 
-            AsyncLoading.IsLoading = true;
-            _instance._tryLoadScene = true;
-
+            _instance._ready.SetResult(true);
             return false;
-        }
-
-        /// <summary>
-        /// 检查游戏加载
-        /// </summary>
-        /// <returns>是否开始加载</returns>
-        public static bool CheckGameLoad()
-        {
-            if (_instance is null) return false;
-            if (_instance._error) return false;
-            if (_instance._tryLoadScene) return true;
-
-            SetText(TextGameLoadError);
-            return false;
-        }
-
-        public static void OnError()
-        {
-            _instance?._error = true;
-            SetText(TextGameLoadError);
         }
 
         /// <summary>
         /// 加载开始
         /// </summary>
-        public static void Loading()
+        internal static void Loading()
         {
             if (_instance) return;
 
@@ -70,6 +55,8 @@ public static partial class Loader
 
             SceneManager.LoadScene(loading.LoadingSceneIndex);
             _instance = loading.gameObject.AddComponent<LoadingScreen>();
+
+            SetText(TextWait);
 
             loading.LoadingVisuals.SetActive(true);
             loading.TipsVersion.SetActive(true);
@@ -79,7 +66,7 @@ public static partial class Loader
         /// <summary>
         /// 加载完成
         /// </summary>
-        public static void Loaded()
+        internal static void Loaded()
         {
             if (_instance?._error is null or true) return;
 
@@ -89,10 +76,10 @@ public static partial class Loader
         /// <summary>
         /// 设置文本
         /// </summary>
-        /// <param name="text"></param>
+        /// <param name="text">文本</param>
         public static void SetText(string text)
         {
-            if (!_instance) return;
+            if (_instance is null) return;
             AsyncLoading.Instance.TipsText.text = text;
         }
 
@@ -102,11 +89,6 @@ public static partial class Loader
         /// <returns></returns>
         private IEnumerator LoadMenuScene()
         {
-            while (!_tryLoadScene)
-            {
-                yield return null;
-            }
-
             SetText(TextLoadCompleted);
 
             var operation = SceneManager.LoadSceneAsync(GameLoad.Instance.MenuSceneIndex)!;
@@ -116,16 +98,20 @@ public static partial class Loader
                 yield return null;
             }
 
-            AsyncLoading.IsLoading = false;
-            yield return null;
-
-            AsyncLoading.Instance.LoadingVisuals.SetActive(false);
-
             _instance = null;
             Destroy(this);
+
+            AsyncLoading.SetInitLoadingScreen(InitLoadingState.ClickToContinue);
+            AsyncLoading.Instance.LoadingVisuals.SetActive(false);
         }
 
         private const string KeyPrefix = "ModCore_LoadingScreen_";
+
+        private static LocalizedString TextWait => new()
+        {
+            DefaultText = "正在等待游戏加载...",
+            LocalizationKey = $"{KeyPrefix}Wait"
+        };
 
         public static LocalizedString TextInit => new()
         {
