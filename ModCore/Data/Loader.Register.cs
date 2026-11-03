@@ -59,7 +59,7 @@ public static partial class Loader
                         var name = so.name;
                         if (dict.Contains(name))
                         {
-                            if (name != "") Plugin.Log.LogWarning($"{type.Name} has same name {name}.");
+                            if (name != "") Plugin.LogDev($"{type.Name} has same name {name}.");
                             continue;
                         }
 
