@@ -253,7 +253,10 @@ public static partial class Loader
                 {
                     if (warpType is not WarpType.Modify) continue;
 
-                    ModifyObject(field.GetValue(obj), jsonField, mod);
+                    var fieldValue = field.GetValue(obj);
+                    ModifyObject(fieldValue, jsonField, mod);
+
+                    if (field.FieldType.IsValueType) field.SetValue(obj, fieldValue);
                 }
                 else
                 {
@@ -309,7 +312,9 @@ public static partial class Loader
 
                 for (var i = 0; i < jsonData.Count; i++)
                 {
-                    ModifyObject(arr.GetValue(i), jsonData[i], mod);
+                    var element = arr.GetValue(i);
+                    ModifyObject(element, jsonData[i], mod);
+                    if (elementType.IsValueType) arr.SetValue(element, i);
                 }
             }
             else if (warpType is WarpType.Add)
@@ -347,7 +352,9 @@ public static partial class Loader
 
                 for (var i = 0; i < jsonData.Count; i++)
                 {
-                    ModifyObject(list[i], jsonData[i], mod);
+                    var element = list[i];
+                    ModifyObject(element, jsonData[i], mod);
+                    if (elementType.IsValueType) list[i] = element;
                 }
             }
             else if (warpType is WarpType.Add)
