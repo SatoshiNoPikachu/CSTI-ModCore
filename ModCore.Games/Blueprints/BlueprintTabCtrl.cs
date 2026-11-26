@@ -37,9 +37,11 @@ public class BlueprintTabCtrl : MBSingleton<BlueprintTabCtrl>
 
         if (_showTabs.Count == 0)
         {
-            _screen.ShowWithoutTabs();
+            NoTab(true);
             return;
         }
+        
+        NoTab(false);
 
         var i = _showTabs.IndexOf(_screen.CurrentTab);
         if (i == -1)
@@ -92,5 +94,12 @@ public class BlueprintTabCtrl : MBSingleton<BlueprintTabCtrl>
         if (_curPage * PageSize >= _showTabs.Count) _curPage = 0;
 
         ChangeTabPage();
+    }
+
+    private void NoTab(bool noTab)
+    {
+        _screen!.NoBlueprintsScreen.SetActive(noTab);
+        _screen.SubTabsParent.gameObject.SetActive(!noTab);
+        _screen.BlueprintsLine.ScrollViewRect.gameObject.SetActive(!noTab);
     }
 }
